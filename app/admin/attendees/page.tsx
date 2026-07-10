@@ -9,6 +9,7 @@ interface AttendeeRow {
   gender: "male" | "female";
   birth_year: number;
   is_staff: boolean;
+  is_leader: boolean;
   attends_day1: boolean;
   attends_day2: boolean;
   attends_day3: boolean;
@@ -27,6 +28,7 @@ interface AddForm {
   attends_day2: boolean;
   attends_day3: boolean;
   is_staff: boolean;
+  is_leader: boolean;
   admin_notes: string;
 }
 
@@ -38,7 +40,7 @@ interface ImportResult {
 const EMPTY_FORM: AddForm = {
   full_name: "", gender: "", birth_year: "", church_name: "",
   lodging_required: false, attends_day1: true, attends_day2: true, attends_day3: true,
-  is_staff: false, admin_notes: "",
+  is_staff: false, is_leader: false, admin_notes: "",
 };
 
 function attendanceLabel(a: AttendeeRow): string {
@@ -103,16 +105,16 @@ export default function AttendeesPage() {
     setPage(0);
   };
 
-  const handleToggleStaff = async (a: AttendeeRow) => {
+  const handleToggleRole = async (a: AttendeeRow, field: "is_staff" | "is_leader") => {
     setTogglingId(a.id);
     try {
       const res = await fetch(`/api/admin/attendees?id=${a.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_staff: !a.is_staff }),
+        body: JSON.stringify({ [field]: !a[field] }),
       });
       if (res.ok) {
-        setAttendees((prev) => prev.map((r) => r.id === a.id ? { ...r, is_staff: !a.is_staff } : r));
+        setAttendees((prev) => prev.map((r) => r.id === a.id ? { ...r, [field]: !a[field] } : r));
       }
     } catch { /* ignore */ }
     finally { setTogglingId(null); }
@@ -248,7 +250,7 @@ export default function AttendeesPage() {
           </select>
           <select value={filterStaff} onChange={(e) => { setFilterStaff(e.target.value as typeof filterStaff); setPage(0); }}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
-            <option value="">교역자 전체</option>
+            <option value="">역할 전체</option>
             <option value="yes">교역자만</option>
             <option value="no">일반 참석자</option>
           </select>
@@ -276,7 +278,7 @@ export default function AttendeesPage() {
                   생년 <SortIcon col="birth_year" />
                 </th>
                 <th className="px-4 py-3 text-left text-slate-400 font-medium">참석</th>
-                <th className="px-4 py-3 text-left text-slate-400 font-medium">교역자</th>
+                <th className="px-4 py-3 text-left text-slate-400 font-medium">역할</th>
                 <th className="px-4 py-3 text-left text-slate-400 font-medium">조</th>
                 <th className="px-4 py-3 w-12"></th>
               </tr>
@@ -298,8 +300,11 @@ export default function AttendeesPage() {
                     <tr key={a.id} className={`border-b border-slate-800 transition-colors ${a.is_staff ? "bg-amber-900/10 hover:bg-amber-900/20" : "hover:bg-slate-800/30"}`}>
                       <td className="px-4 py-3">
                         <span className="text-white font-medium">{a.full_name}</span>
+                        {a.is_leader && (
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">조장</span>
+                        )}
                         {a.is_staff && (
-                          <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">교역자</span>
+                          <span className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">교역자</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-slate-300 text-xs">{a.churches?.canonical_name ?? "-"}</td>
@@ -311,18 +316,41 @@ export default function AttendeesPage() {
                       <td className="px-4 py-3 text-slate-300">{a.birth_year}</td>
                       <td className="px-4 py-3 text-slate-400 text-xs">{attendanceLabel(a)}</td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleToggleStaff(a)}
-                          disabled={togglingId === a.id}
-                          className={`relative w-9 h-5 rounded-full transition-colors disabled:opacity-50 flex-shrink-0 ${a.is_staff ? "bg-amber-500" : "bg-slate-600"}`}
-                          title={a.is_staff ? "교역자 해제" : "교역자 지정"}
-                        >
-                          <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${a.is_staff ? "translate-x-4" : "translate-x-0.5"}`} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          {/* 조장 토글 */}
+                          <button
+                            onClick={() => handleToggleRole(a, "is_leader")}
+                            disabled={togglingId === a.id || a.is_staff}
+                            title={a.is_leader ? "조장 해제" : "조장 지정"}
+                            className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors disabled:opacity-40 ${
+                              a.is_leader
+                                ? "bg-blue-500/25 border-blue-400/50 text-blue-300"
+                                : "bg-transparent border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400"
+                            }`}
+                          >
+                            조장
+                          </button>
+                          {/* 교역자 토글 */}
+                          <button
+                            onClick={() => handleToggleRole(a, "is_staff")}
+                            disabled={togglingId === a.id}
+                            title={a.is_staff ? "교역자 해제" : "교역자 지정"}
+                            className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors ${
+                              a.is_staff
+                                ? "bg-amber-500/25 border-amber-400/50 text-amber-300"
+                                : "bg-transparent border-slate-600 text-slate-500 hover:border-amber-500/50 hover:text-amber-400"
+                            }`}
+                          >
+                            교역자
+                          </button>
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {group ? (
-                          <span className="text-xs bg-gold/20 text-gold border border-gold/30 px-2 py-0.5 rounded-full">{group.group_code}조</span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-xs bg-gold/20 text-gold border border-gold/30 px-2 py-0.5 rounded-full">{group.group_code}조</span>
+                            {a.is_leader && <span className="text-[9px] text-blue-400 font-bold">조장</span>}
+                          </div>
                         ) : a.is_staff ? (
                           <span className="text-xs text-amber-600">해당없음</span>
                         ) : (
@@ -410,13 +438,25 @@ export default function AttendeesPage() {
                   className="w-full bg-navy border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
 
-              {/* 교역자 여부 */}
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setForm((f) => ({ ...f, is_staff: !f.is_staff }))}
-                  className={`relative w-10 h-6 rounded-full transition-colors ${form.is_staff ? "bg-amber-500" : "bg-slate-600"}`}>
-                  <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${form.is_staff ? "translate-x-5" : "translate-x-1"}`} />
-                </button>
-                <span className="text-slate-300 text-sm">교역자 (조편성 제외)</span>
+              {/* 역할 */}
+              <div className="space-y-2">
+                <label className="block text-slate-400 text-xs font-medium">역할</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, is_leader: !f.is_leader, is_staff: f.is_leader ? f.is_staff : false }))}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${form.is_leader ? "bg-blue-900/60 border-blue-500 text-blue-300" : "bg-navy border-slate-600 text-slate-400"}`}>
+                    조장
+                  </button>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, is_staff: !f.is_staff, is_leader: f.is_staff ? f.is_leader : false }))}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${form.is_staff ? "bg-amber-900/60 border-amber-500 text-amber-300" : "bg-navy border-slate-600 text-slate-400"}`}>
+                    교역자
+                  </button>
+                  <button type="button" onClick={() => setForm((f) => ({ ...f, is_leader: false, is_staff: false }))}
+                    className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition-colors ${!form.is_leader && !form.is_staff ? "bg-navy-mid border-slate-400 text-white" : "bg-navy border-slate-600 text-slate-400"}`}>
+                    일반
+                  </button>
+                </div>
+                {form.is_staff && <p className="text-amber-400/70 text-xs">조편성에서 제외됩니다.</p>}
+                {form.is_leader && <p className="text-blue-400/70 text-xs">조장으로 지정되어 조편성 시 조가 기준이 됩니다.</p>}
               </div>
 
               {/* 참석일 */}

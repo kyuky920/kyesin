@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from("attendees")
       .select(
-        `id, full_name, gender, birth_year, is_staff,
+        `id, full_name, gender, birth_year, is_staff, is_leader,
          attends_day1, attends_day2, attends_day3, lodging_required,
          churches(canonical_name),
          group_assignments(retreat_groups(group_code, group_name))`,
@@ -60,12 +60,13 @@ export async function POST(req: NextRequest) {
       full_name, gender, birth_year, church_name,
       shirt_size, lodging_required,
       attends_day1, attends_day2, attends_day3,
-      meal_notes, arrival_notes, admin_notes, is_staff,
+      meal_notes, arrival_notes, admin_notes, is_staff, is_leader,
     } = body as {
       full_name: string; gender: "male" | "female"; birth_year: number; church_name: string;
       shirt_size?: string; lodging_required?: boolean;
       attends_day1?: boolean; attends_day2?: boolean; attends_day3?: boolean;
-      meal_notes?: string; arrival_notes?: string; admin_notes?: string; is_staff?: boolean;
+      meal_notes?: string; arrival_notes?: string; admin_notes?: string;
+      is_staff?: boolean; is_leader?: boolean;
     };
 
     if (!full_name?.trim()) return NextResponse.json({ error: "이름을 입력해 주세요." }, { status: 400 });
@@ -96,7 +97,7 @@ export async function POST(req: NextRequest) {
       shirt_size: shirt_size || null, lodging_required: lodging_required ?? false,
       attends_day1: attends_day1 ?? true, attends_day2: attends_day2 ?? true, attends_day3: attends_day3 ?? true,
       meal_notes: meal_notes || null, arrival_notes: arrival_notes || null, admin_notes: admin_notes || null,
-      attendance_status: "confirmed", is_staff: is_staff ?? false,
+      attendance_status: "confirmed", is_staff: is_staff ?? false, is_leader: is_leader ?? false,
     }).select("id, full_name").single();
 
     if (error) throw error;
@@ -107,15 +108,19 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── PATCH /api/admin/attendees?id=xxx ── is_staff 토글
+// ─── PATCH /api/admin/attendees?id=xxx ── 역할 토글 (is_staff / is_leader)
 export async function PATCH(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get("id");
     if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
-    const { is_staff } = await req.json() as { is_staff: boolean };
+    const body = await req.json() as { is_staff?: boolean; is_leader?: boolean };
+    const update: Record<string, boolean> = {};
+    if (typeof body.is_staff === "boolean") update.is_staff = body.is_staff;
+    if (typeof body.is_leader === "boolean") update.is_leader = body.is_leader;
+    if (Object.keys(update).length === 0) return NextResponse.json({ error: "변경할 필드가 없습니다." }, { status: 400 });
 
     const supabase = createClient();
-    const { error } = await supabase.from("attendees").update({ is_staff }).eq("id", id);
+    const { error } = await supabase.from("attendees").update(update).eq("id", id);
     if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (err) {
