@@ -105,7 +105,7 @@ export default function SchedulePage() {
       {/* Day Tabs */}
       <div
         className="flex-shrink-0 flex mx-4 rounded-2xl p-1 gap-1"
-        style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}
+        style={{ background: "#0b1838", border: "1px solid #1c2e58" }}
       >
         {DAYS.map((d, idx) => (
           <button
@@ -163,14 +163,14 @@ export default function SchedulePage() {
                     </p>
                     <div className={`w-2 h-2 rounded-full mt-1 flex-shrink-0 ${cat.dot}`} />
                     {!isLast && (
-                      <div className="w-px flex-1 mt-1" style={{ background: "#1a2d4a" }} />
+                      <div className="w-px flex-1 mt-1" style={{ background: "#1c2e58" }} />
                     )}
                   </div>
 
                   {/* Content card */}
                   <div
                     className="flex-1 rounded-2xl px-4 py-3 mb-2"
-                    style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}
+                    style={{ background: "#0b1838", border: "1px solid #1c2e58" }}
                   >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <h3 className="text-white text-sm font-semibold leading-snug flex-1">

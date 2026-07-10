@@ -126,7 +126,7 @@ export default async function VenuesPage() {
         {/* Note */}
         <div
           className="rounded-2xl px-4 py-3 flex items-start gap-3"
-          style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}
+          style={{ background: "#0b1838", border: "1px solid #1c2e58" }}
         >
           <svg className="w-4 h-4 text-gold flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

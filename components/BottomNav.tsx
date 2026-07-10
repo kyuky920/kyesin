@@ -72,7 +72,7 @@ export default function BottomNav() {
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-50"
-      style={{ background: "rgba(7,13,26,0.92)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: "1px solid #1a2d4a" }}
+      style={{ background: "rgba(8,18,45,0.94)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)", borderTop: "1px solid #1c2e58" }}
     >
       <div
         className="flex max-w-[430px] mx-auto"

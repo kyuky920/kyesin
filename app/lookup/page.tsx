@@ -87,45 +87,44 @@ export default function LookupPage() {
     }
   };
 
+  const inputStyle = (filled: boolean) => ({
+    background: "#0b1838",
+    border: `1px solid ${filled ? "#e9b94a" : "#1c2e58"}`,
+  });
+
   return (
     <main className="min-h-screen bg-navy flex flex-col pb-nav max-w-[430px] mx-auto">
       {/* Header */}
       <header className="px-5 pt-safe">
         <div className="h-14 flex items-center">
-          <h1 className="text-white text-lg font-bold">내 조 확인</h1>
+          <h1 className="text-white text-lg font-semibold tracking-tight">내 조 확인</h1>
         </div>
       </header>
 
-      <div className="flex-1 px-5 pt-2">
-        {/* Description */}
+      <div className="flex-1 px-5 pt-1">
         <p className="text-slate-400 text-sm mb-8 leading-relaxed">
-          소속 교회, 이름, 생년을 입력하면 내 조편성 결과를 확인할 수 있습니다.
+          소속 교회, 이름, 생년을 입력하면 조편성 결과를 확인할 수 있습니다.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-4">
           {/* Church */}
           <div>
-            <label className="block text-slate-300 text-sm font-semibold mb-2">
-              소속 교회
-            </label>
+            <label className="block text-slate-300 text-sm font-medium mb-2">소속 교회</label>
             <div className="relative">
               <select
                 value={churchName}
                 onChange={(e) => setChurchName(e.target.value)}
                 className="w-full appearance-none rounded-xl px-4 py-[14px] pr-10 text-white focus:outline-none transition-colors"
-                style={{
-                  background: "#0b1529",
-                  border: `1px solid ${churchName ? "#e9b94a" : "#1a2d4a"}`,
-                }}
+                style={inputStyle(!!churchName)}
                 required
               >
-                <option value="" className="bg-[#0b1529]">교회 선택</option>
+                <option value="" className="bg-[#0b1838]">교회 선택</option>
                 {CHURCHES.map((c) => (
-                  <option key={c} value={c} className="bg-[#0b1529]">{c}</option>
+                  <option key={c} value={c} className="bg-[#0b1838]">{c}</option>
                 ))}
               </select>
               <div className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </div>
@@ -135,19 +134,14 @@ export default function LookupPage() {
           {/* Custom church */}
           {churchName === "기타" && (
             <div>
-              <label className="block text-slate-300 text-sm font-semibold mb-2">
-                교회명 직접 입력
-              </label>
+              <label className="block text-slate-300 text-sm font-medium mb-2">교회명 직접 입력</label>
               <input
                 type="text"
                 value={customChurch}
                 onChange={(e) => setCustomChurch(e.target.value)}
                 placeholder="교회명을 입력해 주세요"
                 className="w-full rounded-xl px-4 py-[14px] text-white placeholder-slate-600 focus:outline-none transition-colors"
-                style={{
-                  background: "#0b1529",
-                  border: `1px solid ${customChurch ? "#e9b94a" : "#1a2d4a"}`,
-                }}
+                style={inputStyle(!!customChurch)}
                 required
               />
             </div>
@@ -155,9 +149,7 @@ export default function LookupPage() {
 
           {/* Name */}
           <div>
-            <label className="block text-slate-300 text-sm font-semibold mb-2">
-              이름
-            </label>
+            <label className="block text-slate-300 text-sm font-medium mb-2">이름</label>
             <input
               type="text"
               value={name}
@@ -165,18 +157,16 @@ export default function LookupPage() {
               placeholder="이름을 입력해 주세요"
               autoComplete="name"
               className="w-full rounded-xl px-4 py-[14px] text-white placeholder-slate-600 focus:outline-none transition-colors"
-              style={{
-                background: "#0b1529",
-                border: `1px solid ${name ? "#e9b94a" : "#1a2d4a"}`,
-              }}
+              style={inputStyle(!!name)}
               required
             />
           </div>
 
           {/* Birth Year */}
           <div>
-            <label className="block text-slate-300 text-sm font-semibold mb-2">
-              생년 <span className="text-slate-500 font-normal text-xs">· 4자리 연도</span>
+            <label className="block text-slate-300 text-sm font-medium mb-2">
+              생년
+              <span className="text-slate-500 font-normal text-xs ml-1.5">· 4자리 연도</span>
             </label>
             <input
               type="text"
@@ -190,10 +180,7 @@ export default function LookupPage() {
               placeholder="예: 1998"
               maxLength={4}
               className="w-full rounded-xl px-4 py-[14px] text-white placeholder-slate-600 focus:outline-none transition-colors font-mono tracking-widest"
-              style={{
-                background: "#0b1529",
-                border: `1px solid ${birthYear.length === 4 ? "#e9b94a" : "#1a2d4a"}`,
-              }}
+              style={inputStyle(birthYear.length === 4)}
               required
             />
           </div>
@@ -202,10 +189,11 @@ export default function LookupPage() {
           {error && (
             <div
               className="rounded-xl px-4 py-3 flex items-start gap-3 animate-fade-in"
-              style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}
+              style={{ background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}
             >
               <svg className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <p className="text-red-300 text-sm leading-relaxed">{error}</p>
             </div>
@@ -215,7 +203,7 @@ export default function LookupPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gold text-navy font-bold py-4 rounded-2xl text-[15px] mt-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform shadow-gold-sm"
+            className="w-full bg-gold text-navy font-bold py-[15px] rounded-2xl text-[15px] mt-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform shadow-gold-sm"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

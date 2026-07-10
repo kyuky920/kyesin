@@ -27,7 +27,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ko">
-      <body className="min-h-screen bg-navy text-white antialiased">
+      <body className="min-h-screen bg-navy text-white antialiased" style={{ background: "#08122d" }}>
         {children}
         <BottomNav />
       </body>

@@ -123,8 +123,8 @@ export default async function MePage({
 
       <div className="flex-1 px-5 pt-2 space-y-4">
         {/* Profile */}
-        <div className="rounded-2xl px-4 py-4 flex items-center gap-4" style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}>
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-xl" style={{ background: "#0f1f38" }}>
+        <div className="rounded-2xl px-4 py-4 flex items-center gap-4" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 text-xl" style={{ background: "#0e1e45" }}>
             {attendee.gender === "male" ? "👨" : "👩"}
           </div>
           <div>
@@ -139,7 +139,7 @@ export default async function MePage({
 
         {/* Group */}
         {group ? (
-          <div className="rounded-2xl px-5 py-5" style={{ background: "#0b1529", border: "1px solid rgba(233,185,74,0.35)" }}>
+          <div className="rounded-2xl px-5 py-5" style={{ background: "#0b1838", border: "1px solid rgba(233,185,74,0.35)" }}>
             {/* Hero number */}
             <div className="flex items-end gap-3 mb-4">
               <span className="text-[72px] font-black text-gold leading-none">{group.group_number}</span>
@@ -156,7 +156,7 @@ export default async function MePage({
                 { label: "남", val: String(maleCnt), color: "text-blue-300" },
                 { label: "여", val: String(femaleCnt), color: "text-pink-300" },
               ].map(({ label, val, color }) => (
-                <div key={label} className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "#0f1f38" }}>
+                <div key={label} className="flex-1 rounded-xl px-3 py-2.5 text-center" style={{ background: "#0e1e45" }}>
                   <p className={`text-base font-bold ${color}`}>{val}</p>
                   <p className="text-slate-500 text-[11px] mt-0.5">{label}</p>
                 </div>
@@ -172,7 +172,7 @@ export default async function MePage({
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a" }}>나</span>
               </div>
               {members.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "#0f1f38" }}>
+                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "#0e1e45" }}>
                   <span className="text-sm">{m.gender === "male" ? "👨" : "👩"}</span>
                   <span className="text-slate-200 text-sm flex-1">{m.full_name}</span>
                   <span className="text-slate-500 text-xs">{m.churches?.canonical_name}</span>
@@ -181,8 +181,8 @@ export default async function MePage({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl p-6 text-center" style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "#0f1f38" }}>
+          <div className="rounded-2xl p-6 text-center" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "#0e1e45" }}>
               <svg className="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -194,7 +194,7 @@ export default async function MePage({
 
         {/* Next schedule */}
         {nextSchedule && (
-          <div className="rounded-2xl px-4 py-4" style={{ background: "#0b1529", border: "1px solid #1a2d4a" }}>
+          <div className="rounded-2xl px-4 py-4" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-2 h-2 rounded-full bg-blue-400" />
               <span className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">다음 일정</span>
