@@ -13,7 +13,7 @@ interface AttendeeRow {
   attends_day3: boolean;
   lodging_required: boolean;
   churches: { canonical_name: string } | null;
-  group_assignments: { retreat_groups: { group_number: number; group_name: string } | null }[];
+  group_assignments: { retreat_groups: { group_code: number; group_name: string } | null }[];
 }
 
 interface AddForm {
@@ -315,7 +315,7 @@ export default function AttendeesPage() {
                       </td>
                       <td className="px-4 py-3">
                         {group ? (
-                          <span className="text-xs bg-gold/20 text-gold border border-gold/30 px-2 py-0.5 rounded-full">{group.group_number}조</span>
+                          <span className="text-xs bg-gold/20 text-gold border border-gold/30 px-2 py-0.5 rounded-full">{group.group_code}조</span>
                         ) : (
                           <span className="text-xs text-slate-600">미배정</span>
                         )}

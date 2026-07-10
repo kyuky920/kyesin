@@ -7,7 +7,7 @@ export async function GET() {
 
     const [attendeesRes, groupsRes, assignmentsRes] = await Promise.all([
       supabase.from("attendees").select("id, gender, birth_year, attendance_type, is_overnight"),
-      supabase.from("retreat_groups").select("id, group_number, group_name"),
+      supabase.from("retreat_groups").select("id, group_code, group_name"),
       supabase.from("group_assignments").select("attendee_id, group_id"),
     ]);
 
@@ -42,11 +42,11 @@ export async function GET() {
       attendance_fri_sat: attendees.filter((a: { attendance_type: string }) => a.attendance_type === "fri_sat").length,
       attendance_thu_fri: attendees.filter((a: { attendance_type: string }) => a.attendance_type === "thu_fri").length,
       // Per-group stats
-      groups: groups.map((g: { id: string; group_number: number; group_name: string }) => {
+      groups: groups.map((g: { id: string; group_code: number; group_name: string }) => {
         const groupAssignments = assignments.filter((a: { group_id: string }) => a.group_id === g.id);
         return {
           id: g.id,
-          group_number: g.group_number,
+          group_code: g.group_code,
           group_name: g.group_name,
           member_count: groupAssignments.length,
         };

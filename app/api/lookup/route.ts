@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       churches(canonical_name),
       group_assignments(
         group_id,
-        retreat_groups(id, group_number, group_name)
+        retreat_groups(id, group_code, group_name)
       )
     `;
 

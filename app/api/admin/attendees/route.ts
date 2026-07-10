@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         `id, full_name, gender, birth_year,
          attends_day1, attends_day2, attends_day3, lodging_required,
          churches(canonical_name),
-         group_assignments(retreat_groups(group_number, group_name))`,
+         group_assignments(retreat_groups(group_code, group_name))`,
         { count: "exact" }
       );
 

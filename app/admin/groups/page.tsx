@@ -17,7 +17,7 @@ interface GroupMember {
 
 interface GroupData {
   id: string;
-  group_number: number;
+  group_code: number;
   group_name: string;
   members: GroupMember[];
 }
@@ -48,12 +48,12 @@ export default function GroupsPage() {
       const supabase = createClient();
       const { data: groupsData, error } = await supabase
         .from("retreat_groups")
-        .select("id, group_number, group_name")
-        .order("group_number");
+        .select("id, group_code, group_name")
+        .order("group_code");
       if (error) throw error;
 
       const groupsWithMembers = await Promise.all(
-        ((groupsData ?? []) as { id: string; group_number: number; group_name: string }[]).map(
+        ((groupsData ?? []) as { id: string; group_code: number; group_name: string }[]).map(
           async (g) => {
             const { data: assignments } = await supabase
               .from("group_assignments")
@@ -186,7 +186,7 @@ export default function GroupsPage() {
                 <div key={group.id} className={`border rounded-xl p-4 ${warnings.length > 0 ? "bg-yellow-900/10 border-yellow-700/30" : "bg-navy-mid border-slate-700"}`}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <span className="text-gold text-2xl font-bold">{group.group_number}</span>
+                      <span className="text-gold text-2xl font-bold">{group.group_code}</span>
                       <span className="text-slate-300 text-sm ml-2">{group.group_name}</span>
                     </div>
                     <span className="text-slate-400 text-xs bg-slate-700/50 px-2 py-0.5 rounded-full">{group.members.length}명</span>

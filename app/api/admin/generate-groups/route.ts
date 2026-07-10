@@ -124,26 +124,26 @@ export async function POST() {
     // 9. 조 생성
     const groupInserts = slots.map((_, i) => ({
       retreat_id: retreatId,
-      group_number: i + 1,
+      group_code: i + 1,
       group_name: `${i + 1}조`,
     }));
     if (chowol.length > 0) {
       groupInserts.push({
         retreat_id: retreatId,
-        group_number: slots.length + 1,
+        group_code: slots.length + 1,
         group_name: "초월제일조",
       });
     }
 
     const { data: createdGroups, error: gErr } = await supabase
-      .from("retreat_groups").insert(groupInserts).select("id, group_number");
+      .from("retreat_groups").insert(groupInserts).select("id, group_code");
     if (gErr || !createdGroups) throw new Error("조 생성 실패");
 
     // 10. 배정 저장
     const assignments: { group_id: string; attendee_id: string }[] = [];
-    for (const g of createdGroups as { id: string; group_number: number }[]) {
-      if (g.group_number <= slots.length) {
-        for (const m of slots[g.group_number - 1]) {
+    for (const g of createdGroups as { id: string; group_code: number }[]) {
+      if (g.group_code <= slots.length) {
+        for (const m of slots[g.group_code - 1]) {
           assignments.push({ group_id: g.id, attendee_id: m.id });
         }
       } else if (chowol.length > 0) {

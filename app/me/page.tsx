@@ -9,7 +9,7 @@ interface AttendeeRow {
   age?: number;
   churches: { canonical_name: string } | null;
   group_assignments: {
-    retreat_groups: { id: string; group_number: number; group_name: string } | null;
+    retreat_groups: { id: string; group_code: number; group_name: string } | null;
   }[];
 }
 
@@ -28,7 +28,7 @@ async function getAttendee(id: string): Promise<AttendeeRow | null> {
       id, full_name, birth_year, gender, age,
       churches(canonical_name),
       group_assignments(
-        retreat_groups(id, group_number, group_name)
+        retreat_groups(id, group_code, group_name)
       )
     `)
     .eq("id", id)
@@ -142,7 +142,7 @@ export default async function MePage({
           <div className="rounded-2xl px-5 py-5" style={{ background: "#0b1838", border: "1px solid rgba(233,185,74,0.35)" }}>
             {/* Hero number */}
             <div className="flex items-end gap-3 mb-4">
-              <span className="text-[72px] font-black text-gold leading-none">{group.group_number}</span>
+              <span className="text-[72px] font-black text-gold leading-none">{group.group_code}</span>
               <div className="pb-2">
                 <p className="text-gold text-[10px] font-bold tracking-[0.15em] uppercase">조</p>
                 <p className="text-white text-xl font-bold leading-tight">{group.group_name}</p>
