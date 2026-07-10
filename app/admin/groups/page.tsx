@@ -2,23 +2,22 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 interface GroupMember {
+  assignment_id: string;
   id: string;
   full_name: string;
   gender: "male" | "female";
   birth_year: number;
-  attends_day1: boolean;
-  attends_day2: boolean;
-  attends_day3: boolean;
+  is_leader: boolean;
   churches: { canonical_name: string } | null;
 }
 
 interface GroupData {
   id: string;
-  group_code: number;
+  group_code: string;
   group_name: string;
+  leader_attendee_id: string | null;
   members: GroupMember[];
 }
 
@@ -29,10 +28,11 @@ interface GenerateResult {
 }
 
 function ageLabel(birthYear: number): string {
+  if (!birthYear || birthYear <= 1900) return "-";
   const age = 2026 - birthYear;
-  if (age <= 24) return "20-24";
-  if (age <= 28) return "25-28";
-  return "29+";
+  if (age >= 20 && age <= 24) return "20대초";
+  if (age >= 25 && age <= 28) return "20대중";
+  return "30대+";
 }
 
 export default function GroupsPage() {
@@ -41,35 +41,58 @@ export default function GroupsPage() {
   const [generating, setGenerating] = useState(false);
   const [genResult, setGenResult] = useState<GenerateResult | null>(null);
   const [genError, setGenError] = useState("");
+  const [movingMember, setMovingMember] = useState<{
+    assignment_id: string;
+    full_name: string;
+    current_group_id: string;
+  } | null>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const fetchGroups = useCallback(async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { data: groupsData, error } = await supabase
-        .from("retreat_groups")
-        .select("id, group_code, group_name")
-        .order("group_code");
-      if (error) throw error;
+      const res = await fetch("/api/admin/groups");
+      const data = await res.json() as {
+        groups: {
+          id: string;
+          group_code: string;
+          group_name: string;
+          leader_attendee_id: string | null;
+          group_assignments: {
+            id: string;
+            attendees: {
+              id: string;
+              full_name: string;
+              gender: "male" | "female";
+              birth_year: number;
+              is_leader: boolean;
+              churches: { canonical_name: string } | null;
+            } | null;
+          }[];
+        }[];
+        error?: string;
+      };
+      if (!res.ok || data.error) throw new Error(data.error);
 
-      const groupsWithMembers = await Promise.all(
-        ((groupsData ?? []) as { id: string; group_code: number; group_name: string }[]).map(
-          async (g) => {
-            const { data: assignments } = await supabase
-              .from("group_assignments")
-              .select(`attendees(id, full_name, gender, birth_year, attends_day1, attends_day2, attends_day3, churches(canonical_name))`)
-              .eq("group_id", g.id);
+      const transformed: GroupData[] = (data.groups ?? []).map((g) => ({
+        id: g.id,
+        group_code: g.group_code,
+        group_name: g.group_name,
+        leader_attendee_id: g.leader_attendee_id,
+        members: (g.group_assignments ?? [])
+          .filter((a) => a.attendees)
+          .map((a) => ({
+            assignment_id: a.id,
+            id: a.attendees!.id,
+            full_name: a.attendees!.full_name,
+            gender: a.attendees!.gender,
+            birth_year: a.attendees!.birth_year,
+            is_leader: a.attendees!.is_leader,
+            churches: a.attendees!.churches,
+          })),
+      }));
 
-            const members = ((assignments as unknown as { attendees: GroupMember | null }[]) ?? [])
-              .map((a) => a.attendees)
-              .filter((m): m is GroupMember => m !== null);
-
-            return { ...g, members };
-          }
-        )
-      );
-
-      setGroups(groupsWithMembers);
+      setGroups(transformed);
     } catch {
       setGroups([]);
     } finally {
@@ -86,7 +109,7 @@ export default function GroupsPage() {
     setGenError("");
     try {
       const res = await fetch("/api/admin/generate-groups", { method: "POST" });
-      const data = await res.json();
+      const data = await res.json() as { error?: string; groups_created: number; total_assigned: number; warnings: string[] };
       if (!res.ok || data.error) {
         setGenError(data.error ?? "자동 조편성에 실패했습니다.");
       } else {
@@ -100,24 +123,103 @@ export default function GroupsPage() {
     }
   };
 
-  const getWarnings = (group: GroupData): string[] => {
-    const warnings: string[] = [];
-    const total = group.members.length;
-    const males = group.members.filter((m) => m.gender === "male").length;
-    const females = total - males;
-    if (total < 3) warnings.push("인원 부족 (3명 미만)");
-    if (total > 6) warnings.push("인원 초과 (6명 초과)");
-    if (total > 1 && (males === 0 || females === 0)) warnings.push("성별 편중");
-    const churchSet = new Set(group.members.map((m) => m.churches?.canonical_name).filter(Boolean));
-    if (churchSet.size === 1 && total >= 3 && !group.members[0]?.churches?.canonical_name?.includes("초월")) {
-      warnings.push("동일 교회 집중");
+  const handleRemove = async (assignmentId: string, memberName: string) => {
+    if (!confirm(`${memberName}을(를) 조에서 제거하시겠습니까?`)) return;
+    setActionLoading(assignmentId);
+    try {
+      const res = await fetch(`/api/admin/group-assignments?id=${assignmentId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      setGroups((prev) =>
+        prev.map((g) => ({ ...g, members: g.members.filter((m) => m.assignment_id !== assignmentId) }))
+      );
+    } catch {
+      alert("제거 실패. 다시 시도해 주세요.");
+    } finally {
+      setActionLoading(null);
     }
-    return warnings;
+  };
+
+  const handleMove = async (targetGroupId: string) => {
+    if (!movingMember) return;
+    const { assignment_id, full_name } = movingMember;
+    const sourceGroupId = movingMember.current_group_id;
+    setMovingMember(null);
+    setActionLoading(assignment_id);
+    try {
+      const res = await fetch(`/api/admin/group-assignments?id=${assignment_id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: targetGroupId }),
+      });
+      if (!res.ok) throw new Error();
+      // Optimistic update
+      setGroups((prev) => {
+        const member = prev.flatMap((g) => g.members).find((m) => m.assignment_id === assignment_id);
+        if (!member) return prev;
+        return prev.map((g) => {
+          if (g.id === sourceGroupId) return { ...g, members: g.members.filter((m) => m.assignment_id !== assignment_id) };
+          if (g.id === targetGroupId) return { ...g, members: [...g.members, member] };
+          return g;
+        });
+      });
+    } catch {
+      alert(`${full_name} 이동 실패. 다시 시도해 주세요.`);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const totalAssigned = groups.reduce((s, g) => s + g.members.length, 0);
+  const warnings = (g: GroupData) => {
+    const w: string[] = [];
+    if (g.members.length < 3) w.push("인원 부족");
+    if (g.members.length > 6) w.push("인원 초과");
+    const males = g.members.filter((m) => m.gender === "male").length;
+    if (g.members.length > 1 && (males === 0 || males === g.members.length)) w.push("성별 편중");
+    return w;
   };
 
   return (
     <main className="min-h-screen bg-navy flex flex-col">
-      <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+      {/* 이동 모달 */}
+      {movingMember && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+          onClick={() => setMovingMember(null)}
+        >
+          <div className="absolute inset-0 bg-black/60" />
+          <div
+            className="relative bg-navy-mid border border-slate-700 rounded-2xl p-6 w-full max-w-sm mx-4 mb-4 sm:mb-0"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-gold font-semibold mb-0.5">{movingMember.full_name}</p>
+            <p className="text-slate-400 text-sm mb-4">이동할 조 번호를 선택하세요</p>
+            <div className="grid grid-cols-5 gap-2 max-h-52 overflow-y-auto pr-1">
+              {groups
+                .filter((g) => g.id !== movingMember.current_group_id)
+                .map((g) => (
+                  <button
+                    key={g.id}
+                    onClick={() => handleMove(g.id)}
+                    className="aspect-square flex flex-col items-center justify-center rounded-xl text-sm font-bold transition-colors border border-gold/30 bg-gold/5 hover:bg-gold hover:text-navy text-gold"
+                  >
+                    <span>{g.group_code}</span>
+                    <span className="text-[9px] font-normal opacity-60">{g.members.length}명</span>
+                  </button>
+                ))}
+            </div>
+            <button
+              onClick={() => setMovingMember(null)}
+              className="mt-4 w-full py-2.5 rounded-xl text-slate-400 hover:text-white text-sm border border-slate-700 transition-colors"
+            >
+              취소
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Header */}
+      <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between sticky top-0 bg-navy z-10">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,23 +228,36 @@ export default function GroupsPage() {
           </Link>
           <div>
             <h1 className="text-white font-bold text-lg">조편성 관리</h1>
-            <p className="text-slate-400 text-xs">총 {groups.length}개 조</p>
+            <p className="text-slate-400 text-xs">
+              {loading ? "불러오는 중..." : `${groups.length}개 조 · ${totalAssigned}명 배정`}
+            </p>
           </div>
         </div>
         <button
           onClick={handleGenerate}
-          disabled={generating}
+          disabled={generating || loading}
           className="bg-gold hover:bg-yellow-500 disabled:opacity-60 disabled:cursor-not-allowed text-navy text-sm font-bold py-2 px-4 rounded-lg transition-colors flex items-center gap-2"
         >
           {generating ? (
-            <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>편성 중...</>
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+              편성 중...
+            </>
           ) : (
-            <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>자동 조편성 실행</>
+            <>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              자동 조편성
+            </>
           )}
         </button>
       </header>
 
-      <div className="flex-1 px-4 py-4">
+      <div className="flex-1 px-4 py-4 max-w-6xl mx-auto w-full">
         {genResult && (
           <div className="mb-4 bg-green-900/30 border border-green-700/40 rounded-xl p-4">
             <p className="text-green-300 font-semibold text-sm">
@@ -172,58 +287,102 @@ export default function GroupsPage() {
         ) : groups.length === 0 ? (
           <div className="text-center py-20 text-slate-500">
             <p className="mb-2">편성된 조가 없습니다.</p>
-            <p className="text-sm">&quot;자동 조편성 실행&quot; 버튼으로 조편성을 시작하세요.</p>
+            <p className="text-sm">&quot;자동 조편성&quot; 버튼으로 조편성을 시작하세요.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {groups.map((group) => {
               const males = group.members.filter((m) => m.gender === "male").length;
               const females = group.members.length - males;
-              const churches = Array.from(new Set(group.members.map((m) => m.churches?.canonical_name).filter((n): n is string => !!n)));
-              const warnings = getWarnings(group);
+              const warn = warnings(group);
 
               return (
-                <div key={group.id} className={`border rounded-xl p-4 ${warnings.length > 0 ? "bg-yellow-900/10 border-yellow-700/30" : "bg-navy-mid border-slate-700"}`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <span className="text-gold text-2xl font-bold">{group.group_code}</span>
-                      <span className="text-slate-300 text-sm ml-2">{group.group_name}</span>
+                <div
+                  key={group.id}
+                  className={`border rounded-xl overflow-hidden ${
+                    warn.length > 0 ? "border-yellow-700/40 bg-yellow-900/5" : "border-slate-700 bg-navy-mid"
+                  }`}
+                >
+                  {/* 조 헤더 */}
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gold font-bold text-lg">{group.group_code}조</span>
+                      {warn.length > 0 && (
+                        <span className="text-yellow-400 text-xs" title={warn.join(", ")}>⚠</span>
+                      )}
                     </div>
-                    <span className="text-slate-400 text-xs bg-slate-700/50 px-2 py-0.5 rounded-full">{group.members.length}명</span>
+                    <div className="flex items-center gap-1.5 text-xs">
+                      <span className="text-blue-400">남 {males}</span>
+                      <span className="text-slate-600">·</span>
+                      <span className="text-pink-400">여 {females}</span>
+                      <span className="ml-1 bg-slate-700/50 px-1.5 py-0.5 rounded-full text-slate-400">{group.members.length}명</span>
+                    </div>
                   </div>
 
-                  {warnings.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-1">
-                      {warnings.map((w, i) => (
-                        <span key={i} className="text-xs text-yellow-400 bg-yellow-900/20 border border-yellow-700/30 px-2 py-0.5 rounded-full">{w}</span>
+                  {/* 멤버 목록 */}
+                  <div className="divide-y divide-slate-700/20">
+                    {group.members
+                      .slice()
+                      .sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0))
+                      .map((member) => (
+                        <div
+                          key={member.assignment_id}
+                          className={`flex items-center gap-2 px-3 py-2 ${
+                            actionLoading === member.assignment_id ? "opacity-40" : ""
+                          }`}
+                        >
+                          {/* 조장/성별 배지 */}
+                          <div className="flex-shrink-0 w-5 text-center text-sm">
+                            {member.is_leader ? (
+                              <span className="text-gold" title="조장">★</span>
+                            ) : (
+                              <span className={member.gender === "male" ? "text-blue-400" : "text-pink-400"}>
+                                {member.gender === "male" ? "♂" : "♀"}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* 이름 + 교회 + 나이 */}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-[13px] font-medium truncate leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
+                              {member.full_name}
+                            </p>
+                            <p className="text-[11px] text-slate-500 truncate">
+                              {member.churches?.canonical_name ?? "미상"} · {ageLabel(member.birth_year)}
+                            </p>
+                          </div>
+
+                          {/* 이동 / 제거 버튼 */}
+                          <div className="flex items-center gap-0.5 flex-shrink-0">
+                            <button
+                              onClick={() =>
+                                setMovingMember({
+                                  assignment_id: member.assignment_id,
+                                  full_name: member.full_name,
+                                  current_group_id: group.id,
+                                })
+                              }
+                              disabled={!!actionLoading}
+                              className="text-slate-600 hover:text-blue-400 transition-colors p-1.5 rounded"
+                              title="다른 조로 이동"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => handleRemove(member.assignment_id, member.full_name)}
+                              disabled={!!actionLoading}
+                              className="text-slate-600 hover:text-red-400 transition-colors p-1.5 rounded"
+                              title="조에서 제거"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
                       ))}
-                    </div>
-                  )}
-
-                  <div className="flex items-center gap-3 mb-3 text-xs">
-                    <span className="text-blue-400">남 {males}</span>
-                    <span className="text-slate-600">·</span>
-                    <span className="text-pink-400">여 {females}</span>
-                  </div>
-
-                  {churches.length > 0 && (
-                    <div className="mb-3 flex flex-wrap gap-1">
-                      {churches.map((c) => (
-                        <span key={c} className="text-xs text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded">{c}</span>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="space-y-1 border-t border-slate-700 pt-3">
-                    {group.members.map((m) => (
-                      <div key={m.id} className="flex items-center gap-2 text-xs">
-                        <span className={m.gender === "male" ? "text-blue-400" : "text-pink-400"}>
-                          {m.gender === "male" ? "♂" : "♀"}
-                        </span>
-                        <span className="text-slate-300 flex-1">{m.full_name}</span>
-                        <span className="text-slate-600">{ageLabel(m.birth_year)}</span>
-                      </div>
-                    ))}
                   </div>
                 </div>
               );
