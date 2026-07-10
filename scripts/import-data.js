@@ -140,7 +140,7 @@ async function main() {
     const batch = toInsert.slice(i, i + 50).map(p => ({
       retreat_id: retreatId,
       church_id: churchMap[p.churchCanonical] ?? null,
-      church_name_raw: p.churchRaw,
+      church_name_raw: p.churchCanonical, // canonical name 저장 (정렬용)
       full_name: p.fullName,
       gender: p.gender,
       birth_year: p.birthYear,

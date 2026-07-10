@@ -54,9 +54,9 @@ export async function GET(req: NextRequest) {
     }
 
     if (sort === "church_name") {
-      // 교회명 → 교회 내 이름 순 2차 정렬
+      // church_name_raw는 canonical name으로 정규화된 직접 컬럼 → 교회 내 이름 오름차순 2차 정렬
       query = query
-        .order("canonical_name", { referencedTable: "churches", ascending: dir })
+        .order("church_name_raw", { ascending: dir })
         .order("full_name", { ascending: true });
     } else {
       query = query.order(sort, { ascending: dir });
