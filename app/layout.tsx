@@ -3,8 +3,8 @@ import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 
 export const metadata: Metadata = {
-  title: "WALK WITH HIM | 2026 청년 하계 연합수련회",
-  description: "2026 청년 하계 연합수련회 공식 서비스",
+  title: "WALK WITH HIM | 2026 계신 청년 하계수련회",
+  description: "2026 계신 청년 하계수련회 공식 서비스",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

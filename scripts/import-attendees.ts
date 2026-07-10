@@ -1,6 +1,6 @@
 #!/usr/bin/env npx tsx
 /**
- * 2026 청년 하계 연합수련회 참석자 명단 임포트 스크립트
+ * 2026 계신 청년 하계수련회 참석자 명단 임포트 스크립트
  *
  * 사용법:
  *   npm run import                              # 기본 경로 (data/participants.xlsx)

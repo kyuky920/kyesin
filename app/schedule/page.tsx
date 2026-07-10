@@ -12,7 +12,7 @@ const DAYS = [
 
 const MOCK_SCHEDULE: ScheduleItem[] = [
   { id: "m1", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "13:00", end_time: "15:00", title: "등록 및 입소", description: "수련회 등록 및 숙소 배정", venue: "교회 로비", category: "registration" },
-  { id: "m2", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "15:30", end_time: "17:00", title: "개회 예배", description: "2026 청년 하계 연합수련회 개회 예배", speaker: "박OO 목사", venue: "본당", category: "worship" },
+  { id: "m2", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "15:30", end_time: "17:00", title: "개회 예배", description: "2026 계신 청년 하계수련회 개회 예배", speaker: "박OO 목사", venue: "본당", category: "worship" },
   { id: "m3", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "17:30", end_time: "18:30", title: "저녁 식사", venue: "식당", category: "meal" },
   { id: "m4", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "19:00", end_time: "20:30", title: "첫 번째 강의 — AI 시대의 신앙", description: "AI 시대에도 흔들리지 않는 믿음의 기초", speaker: "이OO 목사", venue: "본당", category: "lecture" },
   { id: "m5", retreat_id: "2026", day_index: 0, date: "2026-07-30", start_time: "20:45", end_time: "21:45", title: "조별 나눔 (1)", description: "오늘 강의 나눔 및 조원 소개", venue: "조별나눔실", category: "group" },
@@ -33,7 +33,7 @@ const MOCK_SCHEDULE: ScheduleItem[] = [
   { id: "m20", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "09:00", end_time: "10:30", title: "네 번째 강의 — 동행의 실천", description: "일상에서 하나님과 동행하는 구체적인 방법", speaker: "박OO 목사", venue: "본당", category: "lecture" },
   { id: "m21", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "10:45", end_time: "12:00", title: "간증 & 나눔 발표", description: "조별 대표 간증 및 수련회 나눔", venue: "본당", category: "testimony" },
   { id: "m22", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "12:00", end_time: "13:00", title: "점심 식사", venue: "식당", category: "meal" },
-  { id: "m23", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "13:30", end_time: "15:00", title: "폐회 예배", description: "2026 청년 하계 연합수련회 폐회 및 파송 예배", speaker: "박OO 목사", venue: "본당", category: "worship" },
+  { id: "m23", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "13:30", end_time: "15:00", title: "폐회 예배", description: "2026 계신 청년 하계수련회 폐회 및 파송 예배", speaker: "박OO 목사", venue: "본당", category: "worship" },
   { id: "m24", retreat_id: "2026", day_index: 2, date: "2026-08-01", start_time: "15:00", end_time: "16:00", title: "퇴소", description: "숙소 정리 및 귀가", venue: "교회 로비", category: "registration" },
 ];
 

@@ -7,7 +7,7 @@ export default function HomePage() {
       <section className="flex-1 flex flex-col items-center justify-center px-6 py-12 text-center">
         {/* Eyebrow */}
         <span className="text-gold text-xs font-bold tracking-[0.3em] uppercase mb-6">
-          2026 청년 하계 연합수련회
+          2026 계신 청년 하계수련회
         </span>
 
         {/* Title */}
