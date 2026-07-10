@@ -44,7 +44,11 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ groups: (data ?? []) as unknown as RawGroup[], retreat_id: retreatId });
+    const sorted = ((data ?? []) as unknown as RawGroup[])
+      .slice()
+      .sort((a, b) => parseInt(a.group_code) - parseInt(b.group_code));
+
+    return NextResponse.json({ groups: sorted, retreat_id: retreatId });
   } catch (err) {
     console.error("GET groups error:", err);
     return NextResponse.json(
