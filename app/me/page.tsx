@@ -17,6 +17,7 @@ interface MemberRow {
   id: string;
   full_name: string;
   gender: "male" | "female";
+  is_leader: boolean;
   churches: { canonical_name: string } | null;
 }
 
@@ -41,26 +42,12 @@ async function getGroupMembers(groupId: string, myId: string): Promise<MemberRow
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("group_assignments")
-    .select(`attendees(id, full_name, gender, churches(canonical_name))`)
+    .select(`attendees(id, full_name, gender, is_leader, churches(canonical_name))`)
     .eq("group_id", groupId);
   if (error || !data) return [];
   return (data as unknown as { attendees: MemberRow | null }[])
     .map((d) => d.attendees)
     .filter((a): a is MemberRow => a !== null && a.id !== myId);
-}
-
-async function getNextSchedule() {
-  const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
-  const { data } = await supabase
-    .from("schedule_items")
-    .select("title, day_date, start_time, audience_note")
-    .gte("day_date", today)
-    .order("day_date")
-    .order("start_time")
-    .limit(1)
-    .single();
-  return data;
 }
 
 function ErrorState({ message, sub }: { message: string; sub: string }) {
@@ -94,7 +81,7 @@ export default async function MePage({
 
   if (!id) return <ErrorState message="접근 오류" sub="본인 확인 후 다시 시도해 주세요." />;
 
-  const [attendee, nextSchedule] = await Promise.all([getAttendee(id), getNextSchedule()]);
+  const attendee = await getAttendee(id);
 
   if (!attendee) {
     return <ErrorState message="참가자를 찾을 수 없습니다" sub="소속 교회, 이름, 생년을 다시 확인해 주세요." />;
@@ -166,15 +153,31 @@ export default async function MePage({
             {/* Members */}
             <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-2">조원 목록</p>
             <div className="space-y-1.5">
+              {/* 나 */}
               <div className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(233,185,74,0.08)", border: "1px solid rgba(233,185,74,0.15)" }}>
                 <span className="text-sm">{attendee.gender === "male" ? "👨" : "👩"}</span>
                 <span className="text-white text-sm font-semibold flex-1">{attendee.full_name}</span>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a" }}>나</span>
               </div>
-              {members.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "#0e1e45" }}>
+              {/* 조장 먼저, 나머지 뒤 */}
+              {[...members].sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0)).map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                  style={m.is_leader
+                    ? { background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)" }
+                    : { background: "#0e1e45" }
+                  }
+                >
                   <span className="text-sm">{m.gender === "male" ? "👨" : "👩"}</span>
-                  <span className="text-slate-200 text-sm flex-1">{m.full_name}</span>
+                  <span className={`text-sm flex-1 font-medium ${m.is_leader ? "text-emerald-300" : "text-slate-200"}`}>
+                    {m.full_name}
+                  </span>
+                  {m.is_leader && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.15)", color: "#6ee7b7" }}>
+                      조장
+                    </span>
+                  )}
                   <span className="text-slate-500 text-xs">{m.churches?.canonical_name}</span>
                 </div>
               ))}
@@ -192,27 +195,6 @@ export default async function MePage({
           </div>
         )}
 
-        {/* Next schedule */}
-        {nextSchedule && (
-          <div className="rounded-2xl px-4 py-4" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="w-2 h-2 rounded-full bg-blue-400" />
-              <span className="text-blue-400 text-[10px] font-bold uppercase tracking-wider">다음 일정</span>
-            </div>
-            <p className="text-white font-semibold text-sm">{nextSchedule.title}</p>
-            <p className="text-slate-400 text-xs mt-1">
-              {nextSchedule.day_date} {nextSchedule.start_time}
-              {nextSchedule.audience_note ? ` · ${nextSchedule.audience_note}` : ""}
-            </p>
-          </div>
-        )}
-
-        <Link href="/lookup" className="flex items-center justify-center gap-2 text-slate-500 text-sm py-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-          </svg>
-          다른 참가자 확인하기
-        </Link>
       </div>
     </main>
   );
