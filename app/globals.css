@@ -46,3 +46,13 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 }
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}

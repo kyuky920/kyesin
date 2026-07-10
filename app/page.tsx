@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-navy flex flex-col pb-nav max-w-[430px] mx-auto">
+    <main className="bg-navy flex flex-col pb-nav max-w-[430px] mx-auto" style={{ minHeight: "100dvh" }}>
       {/* Logo — fills width, background blends with page */}
       <section className="w-full pt-safe">
         <Image

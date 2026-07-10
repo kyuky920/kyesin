@@ -111,7 +111,10 @@ const CAT: Record<string, CatStyle> = {
 export default function SchedulePage() {
   const [activeDay, setActiveDay] = useState(0);
   const [schedule, setSchedule] = useState<ScheduleItem[]>(MOCK_SCHEDULE);
+  const [animDir, setAnimDir] = useState<"left" | "right" | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   // DB에 일정이 있으면 배경에서 업데이트 (스피너 없이)
   useEffect(() => {
@@ -126,9 +129,28 @@ export default function SchedulePage() {
       });
   }, []);
 
-  const handleDayChange = (idx: number) => {
+  const handleDayChange = (idx: number, dir?: "left" | "right") => {
+    if (idx === activeDay) return;
+    setAnimDir(dir ?? (idx > activeDay ? "left" : "right"));
     setActiveDay(idx);
-    listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    listRef.current?.scrollTo({ top: 0, behavior: "instant" });
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || touchStartY.current === null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartX.current = null;
+    touchStartY.current = null;
+    // 수평 스와이프만 처리 (수직 스크롤과 구분)
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0 && activeDay < DAYS.length - 1) handleDayChange(activeDay + 1, "left");
+    else if (dx > 0 && activeDay > 0) handleDayChange(activeDay - 1, "right");
   };
 
   const items = schedule.filter(
@@ -136,7 +158,12 @@ export default function SchedulePage() {
   );
 
   return (
-    <main className="h-screen bg-navy flex flex-col max-w-[430px] mx-auto overflow-hidden">
+    <main
+      className="bg-navy flex flex-col max-w-[430px] mx-auto overflow-hidden"
+      style={{ height: "100dvh" }}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       {/* Header */}
       <header className="flex-shrink-0 px-5 pt-safe">
         <div className="h-14 flex items-center">
@@ -167,11 +194,30 @@ export default function SchedulePage() {
         ))}
       </div>
 
+      {/* Swipe hint dots */}
+      <div className="flex-shrink-0 flex justify-center gap-1.5 pt-2">
+        {DAYS.map((_, idx) => (
+          <div
+            key={idx}
+            className="rounded-full transition-all duration-200"
+            style={{
+              width: idx === activeDay ? "16px" : "6px",
+              height: "6px",
+              background: idx === activeDay ? "#e9b94a" : "#1c2e58",
+            }}
+          />
+        ))}
+      </div>
+
       {/* Schedule List */}
       <div
         ref={listRef}
+        key={`${activeDay}-${animDir}`}
         className="flex-1 overflow-y-auto px-4 py-3 pb-nav"
-        style={{ WebkitOverflowScrolling: "touch" }}
+        style={{
+          WebkitOverflowScrolling: "touch",
+          animation: animDir ? `slideIn${animDir === "left" ? "Left" : "Right"} 0.22s ease-out` : undefined,
+        }}
       >
         <div className="space-y-2">
             {items.map((item, i) => {
