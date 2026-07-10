@@ -29,10 +29,37 @@ interface GenerateResult {
 
 function ageLabel(birthYear: number): string {
   if (!birthYear || birthYear <= 1900) return "-";
-  const age = 2026 - birthYear;
-  if (age >= 20 && age <= 24) return "20대초";
-  if (age >= 25 && age <= 28) return "20대중";
-  return "30대+";
+  return `${2026 - birthYear}세`;
+}
+
+type Warning = { text: string; color: string; bg: string; border: string };
+
+function getGroupWarnings(g: GroupData): Warning[] {
+  const w: Warning[] = [];
+  const n = g.members.length;
+  const males = g.members.filter((m) => m.gender === "male").length;
+  const females = n - males;
+
+  if (n < 4) w.push({ text: "인원 부족", color: "text-red-400", bg: "bg-red-900/20", border: "border-red-700/40" });
+  if (n > 6) w.push({ text: "인원 초과", color: "text-orange-400", bg: "bg-orange-900/20", border: "border-orange-700/40" });
+  if (n > 1 && (males === 0 || females === 0))
+    w.push({ text: "단성 편중", color: "text-yellow-400", bg: "bg-yellow-900/20", border: "border-yellow-700/40" });
+
+  // 동일 교회 3명+
+  const churchCount: Record<string, number> = {};
+  for (const m of g.members) {
+    const c = m.churches?.canonical_name ?? "미상";
+    churchCount[c] = (churchCount[c] ?? 0) + 1;
+  }
+  const maxSameChurch = Math.max(...Object.values(churchCount));
+  if (maxSameChurch >= 3)
+    w.push({ text: "동일교회 편중", color: "text-purple-400", bg: "bg-purple-900/20", border: "border-purple-700/40" });
+
+  // 조장 없음
+  if (!g.members.some((m) => m.is_leader))
+    w.push({ text: "조장 없음", color: "text-slate-400", bg: "bg-slate-800/40", border: "border-slate-600/40" });
+
+  return w;
 }
 
 export default function GroupsPage() {
@@ -170,14 +197,6 @@ export default function GroupsPage() {
   };
 
   const totalAssigned = groups.reduce((s, g) => s + g.members.length, 0);
-  const warnings = (g: GroupData) => {
-    const w: string[] = [];
-    if (g.members.length < 3) w.push("인원 부족");
-    if (g.members.length > 6) w.push("인원 초과");
-    const males = g.members.filter((m) => m.gender === "male").length;
-    if (g.members.length > 1 && (males === 0 || males === g.members.length)) w.push("성별 편중");
-    return w;
-  };
 
   return (
     <main className="min-h-screen bg-navy flex flex-col">
@@ -294,29 +313,35 @@ export default function GroupsPage() {
             {groups.map((group) => {
               const males = group.members.filter((m) => m.gender === "male").length;
               const females = group.members.length - males;
-              const warn = warnings(group);
+              const warn = getGroupWarnings(group);
 
               return (
                 <div
                   key={group.id}
                   className={`border rounded-xl overflow-hidden ${
-                    warn.length > 0 ? "border-yellow-700/40 bg-yellow-900/5" : "border-slate-700 bg-navy-mid"
+                    warn.length > 0 ? "border-yellow-700/30 bg-yellow-900/5" : "border-slate-700 bg-navy-mid"
                   }`}
                 >
                   {/* 조 헤더 */}
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
-                    <div className="flex items-center gap-2">
+                  <div className="px-4 py-3 border-b border-slate-700/50">
+                    <div className="flex items-center justify-between mb-1.5">
                       <span className="text-gold font-bold text-lg">{group.group_code}조</span>
-                      {warn.length > 0 && (
-                        <span className="text-yellow-400 text-xs" title={warn.join(", ")}>⚠</span>
-                      )}
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-blue-400">남 {males}</span>
+                        <span className="text-slate-600">·</span>
+                        <span className="text-pink-400">여 {females}</span>
+                        <span className="ml-1 bg-slate-700/50 px-1.5 py-0.5 rounded-full text-slate-400">{group.members.length}명</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5 text-xs">
-                      <span className="text-blue-400">남 {males}</span>
-                      <span className="text-slate-600">·</span>
-                      <span className="text-pink-400">여 {females}</span>
-                      <span className="ml-1 bg-slate-700/50 px-1.5 py-0.5 rounded-full text-slate-400">{group.members.length}명</span>
-                    </div>
+                    {warn.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        {warn.map((w, i) => (
+                          <span key={i} className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${w.color} ${w.bg} ${w.border}`}>
+                            {w.text}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* 멤버 목록 */}
