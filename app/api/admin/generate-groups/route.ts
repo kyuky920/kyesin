@@ -51,11 +51,12 @@ export async function POST() {
     }
     await supabase.from("retreat_groups").delete().eq("retreat_id", retreatId);
 
-    // 3. 참석자 로드
+    // 3. 참석자 로드 (교역자 제외)
     const { data, error } = await supabase
       .from("attendees")
       .select("id, full_name, gender, birth_year, age_band, church_id, attends_day1, attends_day2, attends_day3, churches(canonical_name)")
-      .eq("retreat_id", retreatId);
+      .eq("retreat_id", retreatId)
+      .eq("is_staff", false);
 
     if (error || !data) throw new Error("참석자 데이터를 불러올 수 없습니다.");
     const attendees = data as unknown as Attendee[];
