@@ -103,6 +103,15 @@ export async function POST() {
     if (mErr) throw new Error("참석자 데이터를 불러올 수 없습니다.");
     const members = (memberData ?? []) as unknown as Attendee[];
 
+    // 초월제일교회 멤버는 반드시 같은 조에 편성
+    const FIXED_CHURCH = "초월제일교회";
+    const fixedMembers = members.filter(
+      (m) => m.churches?.canonical_name === FIXED_CHURCH
+    );
+    const regularMembers = members.filter(
+      (m) => m.churches?.canonical_name !== FIXED_CHURCH
+    );
+
     let numGroups: number;
     let slots: Attendee[][];
     let leaderIds: (string | null)[];
@@ -110,10 +119,17 @@ export async function POST() {
     if (leaders.length > 0) {
       // ── 조장 기반 조편성 ──────────────────────────────
       numGroups = leaders.length;
-      // 각 슬롯을 조장으로 초기화 (조장 자신도 조원)
       slots = shuffle(leaders).map((leader) => [leader]);
       leaderIds = slots.map((slot) => slot[0].id);
-      distributeRoundRobin(members, slots);
+
+      // 초월제일교회 조장이 있는 슬롯 우선, 없으면 첫 슬롯에 고정 배치
+      const fixedLeaderIdx = slots.findIndex(
+        (slot) => slot[0]?.churches?.canonical_name === FIXED_CHURCH
+      );
+      const fixedSlotIdx = fixedLeaderIdx >= 0 ? fixedLeaderIdx : 0;
+      for (const m of fixedMembers) slots[fixedSlotIdx].push(m);
+
+      distributeRoundRobin(regularMembers, slots);
     } else {
       // ── 조장 없을 때: 인원 기반 자동 계산 ──────────────
       numGroups = Math.max(
@@ -123,7 +139,11 @@ export async function POST() {
       );
       slots = Array.from({ length: numGroups }, () => []);
       leaderIds = Array(numGroups).fill(null);
-      distributeRoundRobin(members, slots);
+
+      // 초월제일교회 멤버를 첫 슬롯에 고정
+      for (const m of fixedMembers) slots[0].push(m);
+
+      distributeRoundRobin(regularMembers, slots);
     }
 
     // 경고 수집

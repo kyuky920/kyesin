@@ -45,15 +45,18 @@ function getGroupWarnings(g: GroupData): Warning[] {
   if (n > 1 && (males === 0 || females === 0))
     w.push({ text: "단성 편중", color: "text-yellow-400", bg: "bg-yellow-900/20", border: "border-yellow-700/40" });
 
-  // 동일 교회 3명+
+  // 동일 교회 3명+ (초월제일교회 제외 — 필수 동일 조 규칙)
   const churchCount: Record<string, number> = {};
   for (const m of g.members) {
     const c = m.churches?.canonical_name ?? "미상";
     churchCount[c] = (churchCount[c] ?? 0) + 1;
   }
-  const maxSameChurch = Math.max(...Object.values(churchCount));
-  if (maxSameChurch >= 3)
-    w.push({ text: "동일교회 편중", color: "text-purple-400", bg: "bg-purple-900/20", border: "border-purple-700/40" });
+  for (const [church, cnt] of Object.entries(churchCount)) {
+    if (cnt >= 3 && church !== "초월제일교회")
+      w.push({ text: "동일교회 편중", color: "text-purple-400", bg: "bg-purple-900/20", border: "border-purple-700/40" });
+    if (church === "초월제일교회" && cnt >= 2)
+      w.push({ text: "초월제일(필수동일조)", color: "text-teal-400", bg: "bg-teal-900/20", border: "border-teal-700/40" });
+  }
 
   // 조장 없음
   if (!g.members.some((m) => m.is_leader))
