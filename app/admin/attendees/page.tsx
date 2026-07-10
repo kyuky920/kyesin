@@ -75,6 +75,11 @@ export default function AttendeesPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState("");
 
+  const leaderFileRef = useRef<HTMLInputElement>(null);
+  const [importingLeaders, setImportingLeaders] = useState(false);
+  const [leaderResult, setLeaderResult] = useState<{ updated: number; matched: string[]; not_found: string[]; ambiguous: string[] } | null>(null);
+  const [leaderError, setLeaderError] = useState("");
+
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
@@ -144,6 +149,22 @@ export default function AttendeesPage() {
     finally { setAddLoading(false); }
   };
 
+  const handleLeaderFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportingLeaders(true); setLeaderResult(null); setLeaderError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/admin/attendees/import-leaders", { method: "POST", body: fd });
+      const data = await res.json();
+      if (!res.ok || data.error) { setLeaderError(data.error ?? "업로드 실패"); return; }
+      setLeaderResult(data);
+      await fetchAttendees();
+    } catch { setLeaderError("네트워크 오류"); }
+    finally { setImportingLeaders(false); if (leaderFileRef.current) leaderFileRef.current.value = ""; }
+  };
+
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -195,6 +216,15 @@ export default function AttendeesPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* 조장 명단 업로드 */}
+          <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importingLeaders ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-900/50 hover:bg-blue-800/50 border border-blue-600/40 text-blue-300"}`}>
+            {importingLeaders
+              ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>처리 중...</>
+              : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>조장 업로드</>}
+            <input ref={leaderFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleLeaderFileChange} disabled={importingLeaders} />
+          </label>
+
+          {/* 참석자 엑셀 업로드 */}
           <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importing ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-green-800/60 hover:bg-green-700/60 border border-green-600/40 text-green-300"}`}>
             {importing
               ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>업로드 중...</>
@@ -231,6 +261,32 @@ export default function AttendeesPage() {
           <div className="mb-4 bg-red-900/30 border border-red-700/40 rounded-xl p-3">
             <p className="text-red-300 text-sm">{importError}</p>
             <button onClick={() => setImportError("")} className="mt-1 text-slate-500 text-xs hover:text-slate-300">닫기</button>
+          </div>
+        )}
+
+        {/* 조장 업로드 결과 */}
+        {leaderResult && (
+          <div className="mb-4 bg-blue-900/30 border border-blue-700/40 rounded-xl p-4">
+            <p className="text-blue-300 font-semibold text-sm mb-1">조장 업로드 완료: {leaderResult.updated}명 지정</p>
+            {leaderResult.not_found.length > 0 && (
+              <details className="mt-1">
+                <summary className="text-yellow-400 text-xs cursor-pointer">미매칭 {leaderResult.not_found.length}명 보기</summary>
+                <p className="text-yellow-300 text-xs mt-1">{leaderResult.not_found.join(", ")}</p>
+              </details>
+            )}
+            {leaderResult.ambiguous.length > 0 && (
+              <details className="mt-1">
+                <summary className="text-orange-400 text-xs cursor-pointer">동명이인 {leaderResult.ambiguous.length}건 (수동 처리 필요)</summary>
+                <ul className="text-orange-300 text-xs mt-1 space-y-0.5">{leaderResult.ambiguous.map((s, i) => <li key={i}>{s}</li>)}</ul>
+              </details>
+            )}
+            <button onClick={() => setLeaderResult(null)} className="mt-2 text-slate-500 text-xs hover:text-slate-300">닫기</button>
+          </div>
+        )}
+        {leaderError && (
+          <div className="mb-4 bg-red-900/30 border border-red-700/40 rounded-xl p-3">
+            <p className="text-red-300 text-sm">{leaderError}</p>
+            <button onClick={() => setLeaderError("")} className="mt-1 text-slate-500 text-xs hover:text-slate-300">닫기</button>
           </div>
         )}
 
