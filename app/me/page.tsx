@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createAdminClient as createClient } from "@/lib/supabase/admin";
+import { getChurchColor } from "@/lib/churchColors";
 
 interface AttendeeRow {
   id: string;
@@ -160,27 +161,40 @@ export default async function MePage({
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a" }}>나</span>
               </div>
               {/* 조장 먼저, 나머지 뒤 */}
-              {[...members].sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0)).map((m) => (
-                <div
-                  key={m.id}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5"
-                  style={m.is_leader
-                    ? { background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)" }
-                    : { background: "#0e1e45" }
-                  }
-                >
-                  <span className="text-sm">{m.gender === "male" ? "👨" : "👩"}</span>
-                  <span className={`text-sm flex-1 font-medium ${m.is_leader ? "text-emerald-300" : "text-slate-200"}`}>
-                    {m.full_name}
-                  </span>
-                  {m.is_leader && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.15)", color: "#6ee7b7" }}>
-                      조장
+              {[...members].sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0)).map((m) => {
+                const cc = getChurchColor(m.churches?.canonical_name);
+                return (
+                  <div
+                    key={m.id}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+                    style={m.is_leader
+                      ? { background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)" }
+                      : { background: "#0e1e45" }
+                    }
+                  >
+                    <span className="text-sm">{m.gender === "male" ? "👨" : "👩"}</span>
+                    <span className={`text-sm font-medium ${m.is_leader ? "text-emerald-300" : "text-slate-200"}`}>
+                      {m.full_name}
                     </span>
-                  )}
-                  <span className="text-slate-500 text-xs">{m.churches?.canonical_name}</span>
-                </div>
-              ))}
+                    <div className="flex items-center gap-1.5 ml-auto">
+                      {m.is_leader && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.15)", color: "#6ee7b7" }}>
+                          조장
+                        </span>
+                      )}
+                      {m.churches?.canonical_name && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+                          style={{ background: cc.bg, border: `1px solid ${cc.border}`, color: cc.text }}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cc.dot }} />
+                          {m.churches.canonical_name}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (

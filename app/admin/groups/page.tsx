@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { getChurchColor } from "@/lib/churchColors";
 
 interface GroupMember {
   assignment_id: string;
@@ -372,12 +373,24 @@ export default function GroupsPage() {
 
                           {/* 이름 + 교회 + 나이 */}
                           <div className="flex-1 min-w-0">
-                            <p className={`text-[13px] font-medium truncate leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
-                              {member.full_name}
-                            </p>
-                            <p className="text-[11px] text-slate-500 truncate">
-                              {member.churches?.canonical_name ?? "미상"} · {ageLabel(member.birth_year)}
-                            </p>
+                            <div className="flex items-center gap-1.5">
+                              <p className={`text-[13px] font-medium truncate leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
+                                {member.full_name}
+                              </p>
+                              <span className="text-[10px] text-slate-500 flex-shrink-0">{ageLabel(member.birth_year)}</span>
+                            </div>
+                            {(() => {
+                              const c = getChurchColor(member.churches?.canonical_name);
+                              return (
+                                <span
+                                  className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-0.5"
+                                  style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c.dot }} />
+                                  {member.churches?.canonical_name ?? "미상"}
+                                </span>
+                              );
+                            })()}
                           </div>
 
                           {/* 이동 / 제거 버튼 */}
