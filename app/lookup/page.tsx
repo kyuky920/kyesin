@@ -3,8 +3,22 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+const STORAGE_KEY = "keysin2026_profile";
+
+type Profile = {
+  church_name: string;
+  name: string;
+  birth_year: number;
+  attendee_id?: string;
+};
+
+type PageMode = "init" | "auto-loading" | "form";
+
 export default function LookupPage() {
   const router = useRouter();
+  const [mode, setMode] = useState<PageMode>("init");
+  const [savedProfile, setSavedProfile] = useState<Profile | null>(null);
+
   const [churches, setChurches] = useState<string[]>([]);
   const [churchesLoading, setChurchesLoading] = useState(true);
 
@@ -15,12 +29,68 @@ export default function LookupPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let profile: Profile | null = null;
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) profile = JSON.parse(raw) as Profile;
+    } catch {
+      profile = null;
+    }
+
+    if (profile?.attendee_id) {
+      router.replace(`/me?id=${profile.attendee_id}`);
+      return;
+    }
+
+    if (profile) {
+      setSavedProfile(profile);
+      setMode("auto-loading");
+
+      fetch("/api/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          church_name: profile.church_name,
+          name: profile.name,
+          birth_year: profile.birth_year,
+        }),
+      })
+        .then(async (res) => {
+          const data = await res.json();
+          if (!res.ok || data.error) {
+            localStorage.removeItem(STORAGE_KEY);
+            setSavedProfile(null);
+            setMode("form");
+            return;
+          }
+          const updated: Profile = { ...profile!, attendee_id: data.attendee.id };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+          router.replace(`/me?id=${data.attendee.id}`);
+        })
+        .catch(() => {
+          localStorage.removeItem(STORAGE_KEY);
+          setSavedProfile(null);
+          setMode("form");
+        });
+    } else {
+      setMode("form");
+    }
+  }, [router]);
+
+  useEffect(() => {
+    if (mode !== "form") return;
     fetch("/api/lookup")
       .then((r) => r.json())
       .then((d) => setChurches(d.churches ?? []))
       .catch(() => setChurches([]))
       .finally(() => setChurchesLoading(false));
-  }, []);
+  }, [mode]);
+
+  const handleClearAndShowForm = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSavedProfile(null);
+    setMode("form");
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,6 +116,13 @@ export default function LookupPage() {
         setLoading(false);
         return;
       }
+      const profile: Profile = {
+        church_name: churchName,
+        name: name.trim(),
+        birth_year: yearNum,
+        attendee_id: data.attendee.id,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
       router.push(`/me?id=${data.attendee.id}`);
     } catch {
       setError("네트워크 오류가 발생했습니다. 다시 시도해 주세요.");
@@ -57,6 +134,29 @@ export default function LookupPage() {
     background: "#0b1838",
     border: `1px solid ${filled ? "#e9b94a" : "#1c2e58"}`,
   });
+
+  if (mode === "init") return null;
+
+  if (mode === "auto-loading" && savedProfile) {
+    return (
+      <main className="min-h-screen bg-navy flex flex-col items-center justify-center pb-nav max-w-[430px] mx-auto px-5">
+        <div className="flex flex-col items-center gap-5">
+          <svg className="w-10 h-10 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+          </svg>
+          <p className="text-slate-400 text-sm">저장된 정보로 조회 중...</p>
+          <p className="text-white text-lg font-semibold">{savedProfile.name}</p>
+        </div>
+        <button
+          onClick={handleClearAndShowForm}
+          className="absolute bottom-24 text-slate-500 text-xs underline underline-offset-2"
+        >
+          다른 정보로 조회
+        </button>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-navy flex flex-col pb-nav max-w-[430px] mx-auto">
@@ -72,7 +172,6 @@ export default function LookupPage() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Church */}
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2">소속 교회</label>
             <div className="relative">
@@ -111,7 +210,6 @@ export default function LookupPage() {
             </div>
           </div>
 
-          {/* Name */}
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2">이름</label>
             <input
@@ -126,7 +224,6 @@ export default function LookupPage() {
             />
           </div>
 
-          {/* Birth Year */}
           <div>
             <label className="block text-slate-300 text-sm font-medium mb-2">
               생년
@@ -149,7 +246,6 @@ export default function LookupPage() {
             />
           </div>
 
-          {/* Error */}
           {error && (
             <div
               className="rounded-xl px-4 py-3 flex items-start gap-3"
@@ -162,7 +258,6 @@ export default function LookupPage() {
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={loading || churchesLoading}

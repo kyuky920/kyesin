@@ -154,11 +154,11 @@ export async function POST() {
     if (gErr || !createdGroups) throw new Error("조 생성 실패: " + gErr?.message);
 
     // 배정 저장 — 모든 슬롯 멤버(조장 포함)
-    const assignments: { group_id: string; attendee_id: string }[] = [];
+    const assignments: { group_id: string; attendee_id: string; retreat_id: string }[] = [];
     for (const g of createdGroups as { id: string; group_code: string }[]) {
       const slotIdx = parseInt(g.group_code) - 1;
       for (const m of slots[slotIdx]) {
-        assignments.push({ group_id: g.id, attendee_id: m.id });
+        assignments.push({ group_id: g.id, attendee_id: m.id, retreat_id: retreatId });
       }
     }
 

@@ -15,6 +15,7 @@ export async function GET(req: NextRequest) {
     const ageBand = sp.get("age_band") ?? "";
     const attendance = sp.get("attendance") ?? "";
     const PAGE_SIZE = 20;
+    const fetchAll = sp.get("all") === "true";
 
     const supabase = createClient();
 
@@ -61,7 +62,11 @@ export async function GET(req: NextRequest) {
     } else {
       query = query.order(sort, { ascending: dir });
     }
-    query = query.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    if (fetchAll) {
+      query = query.limit(2000);
+    } else {
+      query = query.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    }
 
     const { data, count, error } = await query;
     if (error) throw error;

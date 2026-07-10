@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -44,6 +44,10 @@ const EMPTY_FORM: AddForm = {
   is_staff: false, is_leader: false, admin_notes: "",
 };
 
+const CACHE_KEY = "keysin2026_admin_attendees";
+const CACHE_TS_KEY = "keysin2026_admin_attendees_ts";
+const CACHE_TTL_MS = 5 * 60 * 1000;
+
 function attendanceLabel(a: AttendeeRow): string {
   const cnt = [a.attends_day1, a.attends_day2, a.attends_day3].filter(Boolean).length;
   if (cnt === 3) return "3일";
@@ -52,14 +56,17 @@ function attendanceLabel(a: AttendeeRow): string {
   return `${cnt}일`;
 }
 
-const PAGE_SIZE = 20;
+function getAgeBand(birth_year: number): "20_24" | "25_28" | "29_plus" | null {
+  if (birth_year >= 2002 && birth_year <= 2006) return "20_24";
+  if (birth_year >= 1998 && birth_year <= 2001) return "25_28";
+  if (birth_year <= 1997 && birth_year > 1900) return "29_plus";
+  return null;
+}
 
 function AttendeesContent() {
   const sp = useSearchParams();
 
-  const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
+  const [allAttendees, setAllAttendees] = useState<AttendeeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<"full_name" | "birth_year" | "church_name">("full_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
@@ -69,7 +76,6 @@ function AttendeesContent() {
   const [filterAgeBand, setFilterAgeBand] = useState<"" | "20_24" | "25_28" | "29_plus">((sp.get("age_band") as "" | "20_24" | "25_28" | "29_plus") ?? "");
   const [filterAttendance, setFilterAttendance] = useState<"" | "full" | "fri_sat" | "thu_fri">((sp.get("attendance") as "" | "full" | "fri_sat" | "thu_fri") ?? "");
   const [searchInput, setSearchInput] = useState("");
-  const [searchName, setSearchName] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [form, setForm] = useState<AddForm>(EMPTY_FORM);
@@ -89,39 +95,86 @@ function AttendeesContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const fetchAttendees = useCallback(async () => {
+  const loadAllAttendees = useCallback(async (invalidate = false) => {
+    if (!invalidate) {
+      try {
+        const ts = sessionStorage.getItem(CACHE_TS_KEY);
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (ts && cached && Date.now() - parseInt(ts) < CACHE_TTL_MS) {
+          setAllAttendees(JSON.parse(cached) as AttendeeRow[]);
+          setLoading(false);
+          return;
+        }
+      } catch { /* ignore */ }
+    } else {
+      try {
+        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(CACHE_TS_KEY);
+      } catch { /* ignore */ }
+    }
+
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: String(page), sort: sortKey, dir: sortDir,
-        ...(filterGender && { gender: filterGender }),
-        ...(searchName && { search: searchName }),
-        ...(filterAssigned && { assigned: filterAssigned }),
-        ...(filterStaff && { staff: filterStaff }),
-        ...(filterAgeBand && { age_band: filterAgeBand }),
-        ...(filterAttendance && { attendance: filterAttendance }),
-      });
-      const res = await fetch(`/api/admin/attendees?${params}`);
+      const res = await fetch("/api/admin/attendees?all=true");
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? "조회 오류");
-      setAttendees(json.data as AttendeeRow[]);
-      setTotal(json.count as number);
-    } catch { setAttendees([]); }
-    finally { setLoading(false); }
-  }, [page, sortKey, sortDir, filterGender, filterAssigned, filterStaff, filterAgeBand, filterAttendance, searchName]);
+      const rows = json.data as AttendeeRow[];
+      setAllAttendees(rows);
+      try {
+        sessionStorage.setItem(CACHE_KEY, JSON.stringify(rows));
+        sessionStorage.setItem(CACHE_TS_KEY, String(Date.now()));
+      } catch { /* ignore */ }
+    } catch {
+      setAllAttendees([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  useEffect(() => { fetchAttendees(); }, [fetchAttendees]);
+  useEffect(() => { loadAllAttendees(); }, [loadAllAttendees]);
 
-  // 검색어 디바운스 (300ms)
-  useEffect(() => {
-    const t = setTimeout(() => { setSearchName(searchInput); setPage(0); }, 300);
-    return () => clearTimeout(t);
-  }, [searchInput]);
+  const filteredSorted = useMemo(() => {
+    let list = allAttendees;
+
+    if (searchInput) {
+      const q = searchInput.toLowerCase();
+      list = list.filter((a) =>
+        a.full_name.toLowerCase().includes(q) ||
+        (a.churches?.canonical_name ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    if (filterGender) list = list.filter((a) => a.gender === filterGender);
+    if (filterStaff === "yes") list = list.filter((a) => a.is_staff);
+    else if (filterStaff === "no") list = list.filter((a) => !a.is_staff);
+    if (filterAssigned === "yes") list = list.filter((a) => !!a.group_assignments?.[0]?.retreat_groups);
+    else if (filterAssigned === "no") list = list.filter((a) => !a.group_assignments?.[0]?.retreat_groups);
+    if (filterAgeBand) list = list.filter((a) => getAgeBand(a.birth_year) === filterAgeBand);
+    if (filterAttendance === "full") list = list.filter((a) => a.attends_day1 && a.attends_day2 && a.attends_day3);
+    else if (filterAttendance === "fri_sat") list = list.filter((a) => !a.attends_day1 && a.attends_day2 && a.attends_day3);
+    else if (filterAttendance === "thu_fri") list = list.filter((a) => a.attends_day1 && a.attends_day2 && !a.attends_day3);
+
+    const asc = sortDir === "asc" ? 1 : -1;
+    list = [...list].sort((x, y) => {
+      if (sortKey === "full_name") {
+        return asc * x.full_name.localeCompare(y.full_name, "ko");
+      }
+      if (sortKey === "birth_year") {
+        return asc * (x.birth_year - y.birth_year);
+      }
+      const cx = x.churches?.canonical_name ?? "";
+      const cy = y.churches?.canonical_name ?? "";
+      const churchCmp = cx.localeCompare(cy, "ko");
+      if (churchCmp !== 0) return asc * churchCmp;
+      return x.full_name.localeCompare(y.full_name, "ko");
+    });
+
+    return list;
+  }, [allAttendees, searchInput, filterGender, filterStaff, filterAssigned, filterAgeBand, filterAttendance, sortKey, sortDir]);
 
   const handleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
     else { setSortKey(key); setSortDir("asc"); }
-    setPage(0);
   };
 
   const handleToggleRole = async (a: AttendeeRow, field: "is_staff" | "is_leader") => {
@@ -133,7 +186,7 @@ function AttendeesContent() {
         body: JSON.stringify({ [field]: !a[field] }),
       });
       if (res.ok) {
-        setAttendees((prev) => prev.map((r) => r.id === a.id ? { ...r, [field]: !a[field] } : r));
+        setAllAttendees((prev) => prev.map((r) => r.id === a.id ? { ...r, [field]: !a[field] } : r));
       }
     } catch { /* ignore */ }
     finally { setTogglingId(null); }
@@ -157,8 +210,7 @@ function AttendeesContent() {
       if (!res.ok || data.error) { setAddError(data.error ?? "등록 실패"); return; }
       setShowAddModal(false);
       setForm(EMPTY_FORM);
-      setPage(0);
-      await fetchAttendees();
+      await loadAllAttendees(true);
     } catch { setAddError("네트워크 오류"); }
     finally { setAddLoading(false); }
   };
@@ -174,7 +226,7 @@ function AttendeesContent() {
       const data = await res.json();
       if (!res.ok || data.error) { setLeaderError(data.error ?? "업로드 실패"); return; }
       setLeaderResult(data);
-      await fetchAttendees();
+      await loadAllAttendees(true);
     } catch { setLeaderError("네트워크 오류"); }
     finally { setImportingLeaders(false); if (leaderFileRef.current) leaderFileRef.current.value = ""; }
   };
@@ -190,8 +242,7 @@ function AttendeesContent() {
       const data = await res.json();
       if (!res.ok || data.error) { setImportError(data.error ?? "임포트 실패"); return; }
       setImportResult(data as ImportResult);
-      setPage(0);
-      await fetchAttendees();
+      await loadAllAttendees(true);
     } catch { setImportError("네트워크 오류"); }
     finally { setImporting(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
@@ -203,12 +254,11 @@ function AttendeesContent() {
       const res = await fetch(`/api/admin/attendees?id=${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok || data.error) { alert(data.error ?? "삭제 실패"); return; }
-      await fetchAttendees();
+      await loadAllAttendees(true);
     } catch { alert("네트워크 오류"); }
     finally { setDeletingId(null); }
   };
 
-  const totalPages = Math.ceil(total / PAGE_SIZE);
   const SortIcon = ({ col }: { col: typeof sortKey }) =>
     sortKey === col
       ? <span className="ml-1 text-gold">{sortDir === "asc" ? "↑" : "↓"}</span>
@@ -216,7 +266,6 @@ function AttendeesContent() {
 
   return (
     <main className="min-h-screen bg-navy flex flex-col">
-      {/* Header */}
       <header className="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/admin" className="text-slate-400 hover:text-white transition-colors">
@@ -226,11 +275,20 @@ function AttendeesContent() {
           </Link>
           <div>
             <h1 className="text-white font-bold text-lg">참석자 관리</h1>
-            <p className="text-slate-400 text-xs">총 {total}명</p>
+            <p className="text-slate-400 text-xs">총 {allAttendees.length}명</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* 조장 명단 업로드 */}
+          <button
+            onClick={() => loadAllAttendees(true)}
+            title="새로고침"
+            className="flex items-center justify-center w-9 h-9 rounded-lg border border-slate-600 text-slate-400 hover:text-white hover:border-slate-400 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+
           <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importingLeaders ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-900/50 hover:bg-blue-800/50 border border-blue-600/40 text-blue-300"}`}>
             {importingLeaders
               ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>처리 중...</>
@@ -238,13 +296,13 @@ function AttendeesContent() {
             <input ref={leaderFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleLeaderFileChange} disabled={importingLeaders} />
           </label>
 
-          {/* 참석자 엑셀 업로드 */}
           <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importing ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-green-800/60 hover:bg-green-700/60 border border-green-600/40 text-green-300"}`}>
             {importing
               ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>업로드 중...</>
               : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>엑셀 업로드</>}
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} disabled={importing} />
           </label>
+
           <button
             onClick={() => { setShowAddModal(true); setAddError(""); setForm(EMPTY_FORM); }}
             className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg bg-gold/20 hover:bg-gold/30 border border-gold/40 text-gold transition-colors"
@@ -278,7 +336,6 @@ function AttendeesContent() {
           </div>
         )}
 
-        {/* 조장 업로드 결과 */}
         {leaderResult && (
           <div className="mb-4 bg-blue-900/30 border border-blue-700/40 rounded-xl p-4">
             <p className="text-blue-300 font-semibold text-sm mb-1">조장 업로드 완료: {leaderResult.updated}명 지정</p>
@@ -304,40 +361,39 @@ function AttendeesContent() {
           </div>
         )}
 
-        {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
           <input
             type="text" value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="이름 검색..."
-            className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold w-32"
+            placeholder="이름/교회 검색..."
+            className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold w-36"
           />
-          <select value={filterGender} onChange={(e) => { setFilterGender(e.target.value as typeof filterGender); setPage(0); }}
+          <select value={filterGender} onChange={(e) => setFilterGender(e.target.value as typeof filterGender)}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
             <option value="">성별 전체</option>
             <option value="male">남성</option>
             <option value="female">여성</option>
           </select>
-          <select value={filterStaff} onChange={(e) => { setFilterStaff(e.target.value as typeof filterStaff); setPage(0); }}
+          <select value={filterStaff} onChange={(e) => setFilterStaff(e.target.value as typeof filterStaff)}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
             <option value="">역할 전체</option>
             <option value="yes">교역자만</option>
             <option value="no">일반 참석자</option>
           </select>
-          <select value={filterAssigned} onChange={(e) => { setFilterAssigned(e.target.value as typeof filterAssigned); setPage(0); }}
+          <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value as typeof filterAssigned)}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
             <option value="">배정 전체</option>
             <option value="yes">배정 완료</option>
             <option value="no">미배정</option>
           </select>
-          <select value={filterAgeBand} onChange={(e) => { setFilterAgeBand(e.target.value as typeof filterAgeBand); setPage(0); }}
+          <select value={filterAgeBand} onChange={(e) => setFilterAgeBand(e.target.value as typeof filterAgeBand)}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
             <option value="">연령대 전체</option>
             <option value="20_24">20–24세</option>
             <option value="25_28">25–28세</option>
             <option value="29_plus">29세+</option>
           </select>
-          <select value={filterAttendance} onChange={(e) => { setFilterAttendance(e.target.value as typeof filterAttendance); setPage(0); }}
+          <select value={filterAttendance} onChange={(e) => setFilterAttendance(e.target.value as typeof filterAttendance)}
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
             <option value="">참석 전체</option>
             <option value="full">3일 (목금토)</option>
@@ -345,14 +401,17 @@ function AttendeesContent() {
             <option value="thu_fri">2일 (목금)</option>
           </select>
           {(filterGender || filterAssigned || filterStaff || filterAgeBand || filterAttendance || searchInput) && (
-            <button onClick={() => { setFilterGender(""); setFilterAssigned(""); setFilterStaff(""); setFilterAgeBand(""); setFilterAttendance(""); setSearchInput(""); setPage(0); }}
+            <button onClick={() => { setFilterGender(""); setFilterAssigned(""); setFilterStaff(""); setFilterAgeBand(""); setFilterAttendance(""); setSearchInput(""); }}
               className="text-xs text-slate-400 hover:text-red-400 border border-slate-600 px-3 py-2 rounded-lg transition-colors">
               필터 초기화
             </button>
           )}
         </div>
 
-        {/* Table */}
+        {filteredSorted.length > 100 && (
+          <p className="text-slate-400 text-xs mb-2">전체 {filteredSorted.length}명 표시 중</p>
+        )}
+
         <div className="overflow-x-auto rounded-xl border border-slate-700">
           <table className="w-full text-sm">
             <thead>
@@ -381,10 +440,10 @@ function AttendeesContent() {
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                   </svg>
                 </td></tr>
-              ) : attendees.length === 0 ? (
+              ) : filteredSorted.length === 0 ? (
                 <tr><td colSpan={8} className="px-4 py-10 text-center text-slate-500">참석자 데이터가 없습니다.</td></tr>
               ) : (
-                attendees.map((a) => {
+                filteredSorted.map((a) => {
                   const group = a.group_assignments?.[0]?.retreat_groups;
                   return (
                     <tr key={a.id} className={`border-b border-slate-800 transition-colors ${a.is_staff ? "bg-amber-900/10 hover:bg-amber-900/20" : "hover:bg-slate-800/30"}`}>
@@ -407,7 +466,6 @@ function AttendeesContent() {
                       <td className="px-4 py-3 text-slate-400 text-xs">{attendanceLabel(a)}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {/* 조장 토글 */}
                           <button
                             onClick={() => handleToggleRole(a, "is_leader")}
                             disabled={togglingId === a.id || a.is_staff}
@@ -420,7 +478,6 @@ function AttendeesContent() {
                           >
                             조장
                           </button>
-                          {/* 교역자 토글 */}
                           <button
                             onClick={() => handleToggleRole(a, "is_staff")}
                             disabled={togglingId === a.id}
@@ -465,19 +522,8 @@ function AttendeesContent() {
             </tbody>
           </table>
         </div>
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0}
-              className="px-3 py-1.5 text-sm border border-slate-600 rounded-lg disabled:opacity-40 hover:border-gold hover:text-gold text-slate-300 transition-colors">이전</button>
-            <span className="text-slate-400 text-sm px-2">{page + 1} / {totalPages}</span>
-            <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
-              className="px-3 py-1.5 text-sm border border-slate-600 rounded-lg disabled:opacity-40 hover:border-gold hover:text-gold text-slate-300 transition-colors">다음</button>
-          </div>
-        )}
       </div>
 
-      {/* ── 수동 등록 모달 ── */}
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>
           <div className="w-full max-w-md bg-navy-mid border border-slate-700 rounded-2xl overflow-hidden">
@@ -491,7 +537,6 @@ function AttendeesContent() {
             </div>
 
             <form onSubmit={handleAddSubmit} className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              {/* 이름 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">이름 <span className="text-red-400">*</span></label>
                 <input type="text" value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))}
@@ -499,7 +544,6 @@ function AttendeesContent() {
                   className="w-full bg-navy border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
 
-              {/* 성별 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">성별 <span className="text-red-400">*</span></label>
                 <div className="flex gap-2">
@@ -512,7 +556,6 @@ function AttendeesContent() {
                 </div>
               </div>
 
-              {/* 생년 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">생년 (4자리) <span className="text-red-400">*</span></label>
                 <input type="number" value={form.birth_year} onChange={(e) => setForm((f) => ({ ...f, birth_year: e.target.value }))}
@@ -520,7 +563,6 @@ function AttendeesContent() {
                   className="w-full bg-navy border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
 
-              {/* 교회 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">소속 교회 <span className="text-red-400">*</span></label>
                 <input type="text" value={form.church_name} onChange={(e) => setForm((f) => ({ ...f, church_name: e.target.value }))}
@@ -528,7 +570,6 @@ function AttendeesContent() {
                   className="w-full bg-navy border border-slate-600 text-white rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:border-gold" />
               </div>
 
-              {/* 역할 */}
               <div className="space-y-2">
                 <label className="block text-slate-400 text-xs font-medium">역할</label>
                 <div className="flex gap-2">
@@ -549,7 +590,6 @@ function AttendeesContent() {
                 {form.is_leader && <p className="text-blue-400/70 text-xs">조장으로 지정되어 조편성 시 조가 기준이 됩니다.</p>}
               </div>
 
-              {/* 참석일 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">참석일</label>
                 <div className="flex gap-2">
@@ -566,7 +606,6 @@ function AttendeesContent() {
                 </div>
               </div>
 
-              {/* 숙박 */}
               <div className="flex items-center gap-3">
                 <button type="button" onClick={() => setForm((f) => ({ ...f, lodging_required: !f.lodging_required }))}
                   className={`relative w-10 h-6 rounded-full transition-colors ${form.lodging_required ? "bg-gold" : "bg-slate-600"}`}>
@@ -575,7 +614,6 @@ function AttendeesContent() {
                 <span className="text-slate-300 text-sm">숙박 필요</span>
               </div>
 
-              {/* 비고 */}
               <div>
                 <label className="block text-slate-400 text-xs font-medium mb-1.5">메모 (선택)</label>
                 <textarea value={form.admin_notes} onChange={(e) => setForm((f) => ({ ...f, admin_notes: e.target.value }))}
