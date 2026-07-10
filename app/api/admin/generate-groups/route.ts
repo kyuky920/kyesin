@@ -65,6 +65,16 @@ export async function POST() {
     if (!retreat) return NextResponse.json({ error: "수련회 데이터가 없습니다." }, { status: 400 });
     const retreatId = (retreat as { id: string }).id;
 
+    // 사전 검증 — 컬럼 없으면 데이터 지우기 전에 미리 실패
+    const { error: preCheck } = await supabase
+      .from("attendees").select("id, is_staff, is_leader").limit(1);
+    if (preCheck) {
+      return NextResponse.json(
+        { error: "DB 마이그레이션이 필요합니다: is_staff / is_leader 컬럼을 추가해 주세요." },
+        { status: 400 }
+      );
+    }
+
     // 기존 배정 초기화
     const { data: existingGroups } = await supabase
       .from("retreat_groups").select("id").eq("retreat_id", retreatId);
