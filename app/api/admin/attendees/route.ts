@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: rows, count: count ?? 0 });
   } catch (err) {
     console.error("GET attendees error:", err);
-    return NextResponse.json({ error: err instanceof Error ? err.message : "조회 오류" }, { status: 500 });
+    const msg = err instanceof Error ? err.message : (err as { message?: string })?.message ?? JSON.stringify(err);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
 
