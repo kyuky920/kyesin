@@ -1,5 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient as createClient } from "@/lib/supabase/admin";
+
+// ─── GET /api/admin/attendees ────────────────────────────────
+export async function GET(req: NextRequest) {
+  try {
+    const sp = req.nextUrl.searchParams;
+    const page = parseInt(sp.get("page") ?? "0");
+    const sort = (sp.get("sort") ?? "full_name") as "full_name" | "birth_year";
+    const dir = sp.get("dir") === "desc" ? false : true;
+    const gender = sp.get("gender") ?? "";
+    const search = sp.get("search") ?? "";
+    const assigned = sp.get("assigned") ?? "";
+    const PAGE_SIZE = 20;
+
+    const supabase = createClient();
+    let query = supabase
+      .from("attendees")
+      .select(
+        `id, full_name, gender, birth_year,
+         attends_day1, attends_day2, attends_day3, lodging_required,
+         churches(canonical_name),
+         group_assignments(retreat_groups(group_number, group_name))`,
+        { count: "exact" }
+      );
+
+    if (gender) query = query.eq("gender", gender);
+    if (search) query = query.ilike("full_name", `%${search}%`);
+    query = query.order(sort, { ascending: dir });
+    query = query.range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    let rows = (data ?? []) as unknown[];
+    if (assigned === "yes") rows = (rows as { group_assignments?: { retreat_groups: unknown | null }[] }[]).filter((a) => a.group_assignments?.[0]?.retreat_groups);
+    else if (assigned === "no") rows = (rows as { group_assignments?: { retreat_groups: unknown | null }[] }[]).filter((a) => !a.group_assignments?.[0]?.retreat_groups);
+
+    return NextResponse.json({ data: rows, count: count ?? 0 });
+  } catch (err) {
+    console.error("GET attendees error:", err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : "조회 오류" }, { status: 500 });
+  }
+}
 
 // ─── POST /api/admin/attendees ───────────────────────────────
 // 단일 참석자 수동 등록

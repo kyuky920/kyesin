@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
-import { createClient } from "@/lib/supabase/client";
 
 interface AttendeeRow {
   id: string;
@@ -84,27 +83,19 @@ export default function AttendeesPage() {
   const fetchAttendees = useCallback(async () => {
     setLoading(true);
     try {
-      const supabase = createClient();
-      let query = supabase
-        .from("attendees")
-        .select(
-          `id, full_name, gender, birth_year,
-           attends_day1, attends_day2, attends_day3, lodging_required,
-           churches(canonical_name),
-           group_assignments(retreat_groups(group_number, group_name))`,
-          { count: "exact" }
-        );
-      if (filterGender) query = query.eq("gender", filterGender);
-      if (searchName) query = query.ilike("full_name", `%${searchName}%`);
-      query = query.order(sortKey, { ascending: sortDir === "asc" });
-      const from = page * PAGE_SIZE;
-      const { data, count, error } = await query.range(from, from + PAGE_SIZE - 1);
-      if (error) throw error;
-      let rows = (data as unknown as AttendeeRow[]) ?? [];
-      if (filterAssigned === "yes") rows = rows.filter((a) => a.group_assignments?.[0]?.retreat_groups);
-      else if (filterAssigned === "no") rows = rows.filter((a) => !a.group_assignments?.[0]?.retreat_groups);
-      setAttendees(rows);
-      setTotal(count ?? 0);
+      const params = new URLSearchParams({
+        page: String(page),
+        sort: sortKey,
+        dir: sortDir,
+        ...(filterGender && { gender: filterGender }),
+        ...(searchName && { search: searchName }),
+        ...(filterAssigned && { assigned: filterAssigned }),
+      });
+      const res = await fetch(`/api/admin/attendees?${params}`);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "조회 오류");
+      setAttendees(json.data as AttendeeRow[]);
+      setTotal(json.count as number);
     } catch { setAttendees([]); }
     finally { setLoading(false); }
   }, [page, sortKey, sortDir, filterGender, filterAssigned, searchName]);
