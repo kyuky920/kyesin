@@ -110,31 +110,20 @@ const CAT: Record<string, CatStyle> = {
 
 export default function SchedulePage() {
   const [activeDay, setActiveDay] = useState(0);
-  const [schedule, setSchedule] = useState<ScheduleItem[] | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [schedule, setSchedule] = useState<ScheduleItem[]>(MOCK_SCHEDULE);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // DB에 일정이 있으면 배경에서 업데이트 (스피너 없이)
   useEffect(() => {
-    const fetch_ = async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("schedule_items")
-          .select("*")
-          .order("day_date")
-          .order("start_time");
-        if (!error && data && data.length > 0) {
-          setSchedule(data as ScheduleItem[]);
-        } else {
-          setSchedule(MOCK_SCHEDULE);
-        }
-      } catch {
-        setSchedule(MOCK_SCHEDULE);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetch_();
+    const supabase = createClient();
+    supabase
+      .from("schedule_items")
+      .select("*")
+      .order("day_date")
+      .order("start_time")
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) setSchedule(data as ScheduleItem[]);
+      });
   }, []);
 
   const handleDayChange = (idx: number) => {
@@ -142,7 +131,7 @@ export default function SchedulePage() {
     listRef.current?.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const items = (schedule || MOCK_SCHEDULE).filter(
+  const items = schedule.filter(
     (i) => i.day_date === DAYS[activeDay].date
   );
 
@@ -184,15 +173,7 @@ export default function SchedulePage() {
         className="flex-1 overflow-y-auto px-4 py-3 pb-nav"
         style={{ WebkitOverflowScrolling: "touch" }}
       >
-        {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <svg className="w-6 h-6 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-            </svg>
-          </div>
-        ) : (
-          <div className="space-y-2">
+        <div className="space-y-2">
             {items.map((item, i) => {
               const cat = CAT[item.item_type ?? "default"] ?? CAT.default;
               const isLast = i === items.length - 1;
@@ -283,7 +264,6 @@ export default function SchedulePage() {
               );
             })}
           </div>
-        )}
       </div>
     </main>
   );

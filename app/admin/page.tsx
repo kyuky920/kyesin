@@ -4,7 +4,7 @@ import { createAdminClient as createClient } from "@/lib/supabase/admin";
 interface AttendeeStats {
   id: string;
   gender: "male" | "female";
-  age_band: string | null;
+  birth_year: number;
   attends_day1: boolean;
   attends_day2: boolean;
   attends_day3: boolean;
@@ -25,31 +25,53 @@ interface Stats {
   thu_fri: number;
 }
 
+function ageBand(birthYear: number): string | null {
+  if (birthYear <= 1900 || birthYear < 1940) return null; // 생년 미상 제외
+  const age = 2026 - birthYear;
+  if (age >= 20 && age <= 24) return "20_24";
+  if (age >= 25 && age <= 28) return "25_28";
+  return "29_plus";
+}
+
 async function getStats(): Promise<Stats> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
 
-    const [attendeesRes, groupsRes, assignmentsRes] = await Promise.all([
-      supabase.from("attendees").select("id, gender, age_band, attends_day1, attends_day2, attends_day3"),
-      supabase.from("retreat_groups").select("id"),
-      supabase.from("group_assignments").select("attendee_id"),
+    const { data: retreat } = await supabase
+      .from("retreats").select("id").order("start_date", { ascending: false }).limit(1).single();
+    const retreatId = retreat ? (retreat as { id: string }).id : null;
+
+    const [attendeesRes, groupsRes] = await Promise.all([
+      retreatId
+        ? supabase.from("attendees").select("id, gender, birth_year, attends_day1, attends_day2, attends_day3").eq("retreat_id", retreatId)
+        : supabase.from("attendees").select("id, gender, birth_year, attends_day1, attends_day2, attends_day3"),
+      retreatId
+        ? supabase.from("retreat_groups").select("id").eq("retreat_id", retreatId)
+        : supabase.from("retreat_groups").select("id"),
     ]);
 
     const attendees = (attendeesRes.data ?? []) as AttendeeStats[];
-    const groupsCount = groupsRes.data?.length ?? 0;
-    const assignedIds = new Set((assignmentsRes.data ?? []).map((a) => a.attendee_id));
+    const groupIds = (groupsRes.data ?? []).map((g: { id: string }) => g.id);
+
+    // 배정 현황 — 현재 수련회 조에 속한 경우만
+    let assignedIds = new Set<string>();
+    if (groupIds.length > 0) {
+      const { data: assignments } = await supabase
+        .from("group_assignments").select("attendee_id").in("group_id", groupIds);
+      assignedIds = new Set((assignments ?? []).map((a: { attendee_id: string }) => a.attendee_id));
+    }
 
     return {
       total: attendees.length,
       assigned: assignedIds.size,
       unassigned: attendees.length - assignedIds.size,
-      groups: groupsCount,
+      groups: groupIds.length,
       male: attendees.filter((a) => a.gender === "male").length,
       female: attendees.filter((a) => a.gender === "female").length,
-      age20_24: attendees.filter((a) => a.age_band === "20_24").length,
-      age25_28: attendees.filter((a) => a.age_band === "25_28").length,
-      age29plus: attendees.filter((a) => a.age_band === "29_plus").length,
-      full: attendees.filter((a) => a.attends_day1 && a.attends_day2 && a.attends_day3).length,
+      age20_24:  attendees.filter((a) => ageBand(a.birth_year) === "20_24").length,
+      age25_28:  attendees.filter((a) => ageBand(a.birth_year) === "25_28").length,
+      age29plus: attendees.filter((a) => ageBand(a.birth_year) === "29_plus").length,
+      full:    attendees.filter((a) => a.attends_day1 && a.attends_day2 && a.attends_day3).length,
       fri_sat: attendees.filter((a) => !a.attends_day1 && a.attends_day2 && a.attends_day3).length,
       thu_fri: attendees.filter((a) => a.attends_day1 && a.attends_day2 && !a.attends_day3).length,
     };
@@ -58,14 +80,20 @@ async function getStats(): Promise<Stats> {
   }
 }
 
-function StatCard({ label, value, sub, color = "text-white" }: { label: string; value: number | string; sub?: string; color?: string }) {
-  return (
-    <div className="bg-navy-mid border border-slate-700 rounded-xl p-4">
+function StatCard({
+  label, value, sub, color = "text-white", href,
+}: {
+  label: string; value: number | string; sub?: string; color?: string; href?: string;
+}) {
+  const inner = (
+    <div className={`bg-navy-mid border border-slate-700 rounded-xl p-4 h-full ${href ? "hover:border-slate-500 hover:bg-slate-800/40 transition-colors" : ""}`}>
       <p className="text-slate-400 text-xs font-medium mb-1">{label}</p>
       <p className={`text-2xl font-bold ${color}`}>{value}</p>
       {sub && <p className="text-slate-500 text-xs mt-1">{sub}</p>}
+      {href && <p className="text-slate-600 text-[10px] mt-2">탭하여 목록 보기 →</p>}
     </div>
   );
+  return href ? <Link href={href} className="block">{inner}</Link> : inner;
 }
 
 export default async function AdminPage() {
@@ -90,16 +118,22 @@ export default async function AdminPage() {
       </header>
 
       <div className="flex-1 px-6 py-6 max-w-4xl mx-auto w-full space-y-6">
+        {/* 전체 현황 */}
         <section>
           <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">전체 현황</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <StatCard label="총 참가자" value={stats.total} color="text-white" />
-            <StatCard label="조 배정 완료" value={stats.assigned} sub={`${assignedPct}%`} color="text-green-400" />
-            <StatCard label="미배정" value={stats.unassigned} color={stats.unassigned > 0 ? "text-yellow-400" : "text-slate-400"} />
-            <StatCard label="총 조 수" value={stats.groups} sub="목표 28~34개" color="text-gold" />
+            <StatCard label="총 참가자" value={stats.total} color="text-white"
+              href="/admin/attendees" />
+            <StatCard label="조 배정 완료" value={stats.assigned} sub={`${assignedPct}%`} color="text-green-400"
+              href="/admin/attendees?assigned=yes" />
+            <StatCard label="미배정" value={stats.unassigned} color={stats.unassigned > 0 ? "text-yellow-400" : "text-slate-400"}
+              href="/admin/attendees?assigned=no" />
+            <StatCard label="총 조 수" value={stats.groups} sub="목표 28~34개" color="text-gold"
+              href="/admin/groups" />
           </div>
         </section>
 
+        {/* 조편성 진행률 */}
         <section>
           <div className="bg-navy-mid border border-slate-700 rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
@@ -113,55 +147,49 @@ export default async function AdminPage() {
           </div>
         </section>
 
+        {/* 성별 분포 */}
         <section>
           <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">성별 분포</h2>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-navy-mid border border-blue-700/30 rounded-xl p-4">
-              <p className="text-blue-400 text-xs font-medium mb-1">남성</p>
-              <p className="text-2xl font-bold text-blue-300">{stats.male}</p>
-              <p className="text-slate-500 text-xs mt-1">{stats.total > 0 ? Math.round((stats.male / stats.total) * 100) : 0}%</p>
-            </div>
-            <div className="bg-navy-mid border border-pink-700/30 rounded-xl p-4">
-              <p className="text-pink-400 text-xs font-medium mb-1">여성</p>
-              <p className="text-2xl font-bold text-pink-300">{stats.female}</p>
-              <p className="text-slate-500 text-xs mt-1">{stats.total > 0 ? Math.round((stats.female / stats.total) * 100) : 0}%</p>
-            </div>
+            <StatCard label="남성" value={stats.male}
+              sub={`${stats.total > 0 ? Math.round((stats.male / stats.total) * 100) : 0}%`}
+              color="text-blue-300" href="/admin/attendees?gender=male" />
+            <StatCard label="여성" value={stats.female}
+              sub={`${stats.total > 0 ? Math.round((stats.female / stats.total) * 100) : 0}%`}
+              color="text-pink-300" href="/admin/attendees?gender=female" />
           </div>
         </section>
 
+        {/* 연령대 분포 */}
         <section>
           <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">연령대 분포</h2>
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "20–24세", val: stats.age20_24 },
-              { label: "25–28세", val: stats.age25_28 },
-              { label: "29세+",   val: stats.age29plus },
-            ].map(({ label, val }) => (
-              <div key={label} className="bg-navy-mid border border-slate-700 rounded-xl p-4 text-center">
-                <p className="text-gold text-xs font-semibold mb-1">{label}</p>
-                <p className="text-xl font-bold text-white">{val}</p>
-                <p className="text-slate-500 text-xs">{stats.total > 0 ? Math.round((val / stats.total) * 100) : 0}%</p>
-              </div>
-            ))}
+            <StatCard label="20–24세" value={stats.age20_24}
+              sub={`${stats.total > 0 ? Math.round((stats.age20_24 / stats.total) * 100) : 0}%`}
+              color="text-white" href="/admin/attendees?age_band=20_24" />
+            <StatCard label="25–28세" value={stats.age25_28}
+              sub={`${stats.total > 0 ? Math.round((stats.age25_28 / stats.total) * 100) : 0}%`}
+              color="text-white" href="/admin/attendees?age_band=25_28" />
+            <StatCard label="29세+" value={stats.age29plus}
+              sub={`${stats.total > 0 ? Math.round((stats.age29plus / stats.total) * 100) : 0}%`}
+              color="text-white" href="/admin/attendees?age_band=29_plus" />
           </div>
         </section>
 
+        {/* 참석 유형 */}
         <section>
           <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">참석 유형</h2>
           <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "3일 (목금토)", val: stats.full },
-              { label: "2일 (금토)",   val: stats.fri_sat },
-              { label: "2일 (목금)",   val: stats.thu_fri },
-            ].map(({ label, val }) => (
-              <div key={label} className="bg-navy-mid border border-slate-700 rounded-xl p-4 text-center">
-                <p className="text-slate-400 text-xs mb-1">{label}</p>
-                <p className="text-xl font-bold text-white">{val}</p>
-              </div>
-            ))}
+            <StatCard label="3일 (목금토)" value={stats.full}
+              href="/admin/attendees?attendance=full" />
+            <StatCard label="2일 (금토)" value={stats.fri_sat}
+              href="/admin/attendees?attendance=fri_sat" />
+            <StatCard label="2일 (목금)" value={stats.thu_fri}
+              href="/admin/attendees?attendance=thu_fri" />
           </div>
         </section>
 
+        {/* 운영 바로가기 */}
         <section>
           <h2 className="text-slate-400 text-xs font-semibold uppercase tracking-wider mb-3">운영 바로가기</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -179,7 +207,6 @@ export default async function AdminPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </Link>
-
             <Link href="/admin/groups" className="bg-navy-mid hover:bg-slate-700 border border-slate-700 rounded-xl p-5 flex items-center gap-4 transition-colors group">
               <div className="w-10 h-10 bg-gold/10 border border-gold/30 rounded-lg flex items-center justify-center flex-shrink-0">
                 <svg className="w-5 h-5 text-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">

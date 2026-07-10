@@ -12,26 +12,52 @@ export async function GET(req: NextRequest) {
     const search = sp.get("search") ?? "";
     const assigned = sp.get("assigned") ?? "";
     const staffFilter = sp.get("staff") ?? "";
+    const ageBand = sp.get("age_band") ?? "";
+    const attendance = sp.get("attendance") ?? "";
     const PAGE_SIZE = 20;
 
     const supabase = createClient();
+
+    // 최신 수련회 ID 조회 (캐시 효과 없음, 빠른 단일 행 쿼리)
+    const { data: retreat } = await supabase
+      .from("retreats").select("id").order("start_date", { ascending: false }).limit(1).single();
+    const retreatId = retreat ? (retreat as { id: string }).id : null;
+
     let query = supabase
       .from("attendees")
       .select(
         `id, full_name, gender, birth_year, is_staff, is_leader,
          attends_day1, attends_day2, attends_day3, lodging_required,
          churches(canonical_name),
-         group_assignments(retreat_groups(group_code, group_name))`,
+         group_assignments(retreat_groups(group_code))`,
         { count: "exact" }
       );
 
+    if (retreatId) query = query.eq("retreat_id", retreatId);
     if (gender) query = query.eq("gender", gender);
     if (search) query = query.ilike("full_name", `%${search}%`);
     if (staffFilter === "yes") query = query.eq("is_staff", true);
     else if (staffFilter === "no") query = query.eq("is_staff", false);
 
+    // 연령대 필터 (birth_year 범위로 처리)
+    if (ageBand === "20_24") query = query.gte("birth_year", 2002).lte("birth_year", 2006);
+    else if (ageBand === "25_28") query = query.gte("birth_year", 1998).lte("birth_year", 2001);
+    else if (ageBand === "29_plus") query = query.lte("birth_year", 1997).gt("birth_year", 1900);
+
+    // 참석 유형 필터
+    if (attendance === "full") {
+      query = query.eq("attends_day1", true).eq("attends_day2", true).eq("attends_day3", true);
+    } else if (attendance === "fri_sat") {
+      query = query.eq("attends_day1", false).eq("attends_day2", true).eq("attends_day3", true);
+    } else if (attendance === "thu_fri") {
+      query = query.eq("attends_day1", true).eq("attends_day2", true).eq("attends_day3", false);
+    }
+
     if (sort === "church_name") {
-      query = query.order("canonical_name", { referencedTable: "churches", ascending: dir });
+      // 교회명 → 교회 내 이름 순 2차 정렬
+      query = query
+        .order("canonical_name", { referencedTable: "churches", ascending: dir })
+        .order("full_name", { ascending: true });
     } else {
       query = query.order(sort, { ascending: dir });
     }

@@ -1,6 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient as createClient } from "@/lib/supabase/admin";
 
+// ─── GET /api/lookup ── 실제 참석자 교회 목록 반환
+export async function GET() {
+  try {
+    const supabase = createClient();
+
+    const { data: retreat } = await supabase
+      .from("retreats").select("id").order("start_date", { ascending: false }).limit(1).single();
+    if (!retreat) return NextResponse.json({ churches: [] });
+
+    const retreatId = (retreat as { id: string }).id;
+
+    const { data, error } = await supabase
+      .from("attendees")
+      .select("churches(canonical_name)")
+      .eq("retreat_id", retreatId)
+      .not("church_id", "is", null);
+
+    if (error) throw error;
+
+    const seen = new Set<string>();
+    const churches: string[] = [];
+    for (const row of (data ?? []) as unknown as { churches: { canonical_name: string } | null }[]) {
+      const name = row.churches?.canonical_name;
+      if (name && !seen.has(name)) {
+        seen.add(name);
+        churches.push(name);
+      }
+    }
+    churches.sort((a, b) => a.localeCompare(b, "ko"));
+
+    return NextResponse.json({ churches });
+  } catch (err) {
+    console.error("GET churches error:", err);
+    return NextResponse.json({ churches: [] });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();

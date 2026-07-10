@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface AttendeeRow {
@@ -15,7 +16,7 @@ interface AttendeeRow {
   attends_day3: boolean;
   lodging_required: boolean;
   churches: { canonical_name: string } | null;
-  group_assignments: { retreat_groups: { group_code: number; group_name: string } | null }[];
+  group_assignments: { retreat_groups: { group_code: number } | null }[];
 }
 
 interface AddForm {
@@ -54,15 +55,20 @@ function attendanceLabel(a: AttendeeRow): string {
 const PAGE_SIZE = 20;
 
 export default function AttendeesPage() {
+  const sp = useSearchParams();
+
   const [attendees, setAttendees] = useState<AttendeeRow[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sortKey, setSortKey] = useState<"full_name" | "birth_year" | "church_name">("full_name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
-  const [filterGender, setFilterGender] = useState<"" | "male" | "female">("");
-  const [filterAssigned, setFilterAssigned] = useState<"" | "yes" | "no">("");
-  const [filterStaff, setFilterStaff] = useState<"" | "yes" | "no">("");
+  const [filterGender, setFilterGender] = useState<"" | "male" | "female">((sp.get("gender") as "" | "male" | "female") ?? "");
+  const [filterAssigned, setFilterAssigned] = useState<"" | "yes" | "no">((sp.get("assigned") as "" | "yes" | "no") ?? "");
+  const [filterStaff, setFilterStaff] = useState<"" | "yes" | "no">((sp.get("staff") as "" | "yes" | "no") ?? "");
+  const [filterAgeBand, setFilterAgeBand] = useState<"" | "20_24" | "25_28" | "29_plus">((sp.get("age_band") as "" | "20_24" | "25_28" | "29_plus") ?? "");
+  const [filterAttendance, setFilterAttendance] = useState<"" | "full" | "fri_sat" | "thu_fri">((sp.get("attendance") as "" | "full" | "fri_sat" | "thu_fri") ?? "");
+  const [searchInput, setSearchInput] = useState("");
   const [searchName, setSearchName] = useState("");
 
   const [showAddModal, setShowAddModal] = useState(false);
@@ -92,6 +98,8 @@ export default function AttendeesPage() {
         ...(searchName && { search: searchName }),
         ...(filterAssigned && { assigned: filterAssigned }),
         ...(filterStaff && { staff: filterStaff }),
+        ...(filterAgeBand && { age_band: filterAgeBand }),
+        ...(filterAttendance && { attendance: filterAttendance }),
       });
       const res = await fetch(`/api/admin/attendees?${params}`);
       const json = await res.json();
@@ -100,9 +108,15 @@ export default function AttendeesPage() {
       setTotal(json.count as number);
     } catch { setAttendees([]); }
     finally { setLoading(false); }
-  }, [page, sortKey, sortDir, filterGender, filterAssigned, filterStaff, searchName]);
+  }, [page, sortKey, sortDir, filterGender, filterAssigned, filterStaff, filterAgeBand, filterAttendance, searchName]);
 
   useEffect(() => { fetchAttendees(); }, [fetchAttendees]);
+
+  // 검색어 디바운스 (300ms)
+  useEffect(() => {
+    const t = setTimeout(() => { setSearchName(searchInput); setPage(0); }, 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   const handleSort = (key: typeof sortKey) => {
     if (sortKey === key) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
@@ -293,8 +307,8 @@ export default function AttendeesPage() {
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-4">
           <input
-            type="text" value={searchName}
-            onChange={(e) => { setSearchName(e.target.value); setPage(0); }}
+            type="text" value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="이름 검색..."
             className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold w-32"
           />
@@ -316,6 +330,26 @@ export default function AttendeesPage() {
             <option value="yes">배정 완료</option>
             <option value="no">미배정</option>
           </select>
+          <select value={filterAgeBand} onChange={(e) => { setFilterAgeBand(e.target.value as typeof filterAgeBand); setPage(0); }}
+            className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
+            <option value="">연령대 전체</option>
+            <option value="20_24">20–24세</option>
+            <option value="25_28">25–28세</option>
+            <option value="29_plus">29세+</option>
+          </select>
+          <select value={filterAttendance} onChange={(e) => { setFilterAttendance(e.target.value as typeof filterAttendance); setPage(0); }}
+            className="bg-navy-mid border border-slate-600 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-gold">
+            <option value="">참석 전체</option>
+            <option value="full">3일 (목금토)</option>
+            <option value="fri_sat">2일 (금토)</option>
+            <option value="thu_fri">2일 (목금)</option>
+          </select>
+          {(filterGender || filterAssigned || filterStaff || filterAgeBand || filterAttendance || searchInput) && (
+            <button onClick={() => { setFilterGender(""); setFilterAssigned(""); setFilterStaff(""); setFilterAgeBand(""); setFilterAttendance(""); setSearchInput(""); setPage(0); }}
+              className="text-xs text-slate-400 hover:text-red-400 border border-slate-600 px-3 py-2 rounded-lg transition-colors">
+              필터 초기화
+            </button>
+          )}
         </div>
 
         {/* Table */}
