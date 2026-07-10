@@ -140,12 +140,13 @@ export async function POST() {
       if (slot.length < 2) warnings.push(`${slots.indexOf(slot) + 1}번 조 인원 부족 (${slot.length}명)`);
     }
 
-    // 조 생성
+    // 조 생성 (group_code는 text 타입, age_band는 NOT NULL이라 기본값 설정)
     const groupInserts = slots.map((_, i) => ({
       retreat_id: retreatId,
-      group_code: i + 1,
+      group_code: String(i + 1),
       group_name: `${i + 1}조`,
       leader_attendee_id: leaderIds[i] ?? null,
+      age_band: "mixed",
     }));
 
     const { data: createdGroups, error: gErr } = await supabase
@@ -154,8 +155,8 @@ export async function POST() {
 
     // 배정 저장 — 모든 슬롯 멤버(조장 포함)
     const assignments: { group_id: string; attendee_id: string }[] = [];
-    for (const g of createdGroups as { id: string; group_code: number }[]) {
-      const slotIdx = g.group_code - 1;
+    for (const g of createdGroups as { id: string; group_code: string }[]) {
+      const slotIdx = parseInt(g.group_code) - 1;
       for (const m of slots[slotIdx]) {
         assignments.push({ group_id: g.id, attendee_id: m.id });
       }
