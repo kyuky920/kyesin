@@ -64,15 +64,15 @@ export interface GroupAssignment {
 export interface ScheduleItem {
   id: string;
   retreat_id: string;
-  day_index: number;
-  date: string;
+  day_date: string;             // "2026-07-30" | "2026-07-31" | "2026-08-01"
   start_time: string;
-  end_time?: string;
+  end_time?: string | null;
   title: string;
-  description?: string;
-  speaker?: string;
-  venue?: string;
-  category?: string;
+  subtitle?: string | null;     // 강사 정보
+  item_type?: string | null;    // worship | lecture | meal | group | prayer | activity | break | registration
+  audience_note?: string | null; // 장소
+  body?: string | null;         // 상세 설명
+  sort_order?: number | null;
 }
 
 export interface Venue {

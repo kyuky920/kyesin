@@ -34,3 +34,9 @@ next-env.d.ts
 # editor
 .vscode/
 .idea/
+
+# one-time operational scripts (contain local paths, not for deploy)
+scripts/check-*.mjs
+scripts/import-once.mjs
+scripts/fix-data.mjs
+scripts/update-schedule.mjs

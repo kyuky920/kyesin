@@ -54,9 +54,9 @@ async function getNextSchedule() {
   const today = new Date().toISOString().slice(0, 10);
   const { data } = await supabase
     .from("schedule_items")
-    .select("*")
-    .gte("date", today)
-    .order("date")
+    .select("title, day_date, start_time, audience_note")
+    .gte("day_date", today)
+    .order("day_date")
     .order("start_time")
     .limit(1)
     .single();
@@ -201,8 +201,8 @@ export default async function MePage({
             </div>
             <p className="text-white font-semibold text-sm">{nextSchedule.title}</p>
             <p className="text-slate-400 text-xs mt-1">
-              {nextSchedule.date} {nextSchedule.start_time}
-              {nextSchedule.venue ? ` · ${nextSchedule.venue}` : ""}
+              {nextSchedule.day_date} {nextSchedule.start_time}
+              {nextSchedule.audience_note ? ` · ${nextSchedule.audience_note}` : ""}
             </p>
           </div>
         )}
