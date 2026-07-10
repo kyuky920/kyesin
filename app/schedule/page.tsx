@@ -44,68 +44,67 @@ const MOCK_SCHEDULE: ScheduleItem[] = [
   { id: "m28", retreat_id: "2026", day_date: "2026-08-01", start_time: "13:00", title: "귀가", item_type: "departure" },
 ];
 
-// 카테고리별 색상 시스템
-// border: 왼쪽 강조 테두리, bg: 카드 배경 색조, dot: 타임라인 점
-// label / labelFg / labelBg: 배지 텍스트·배경
 type CatStyle = {
-  border: string;
-  bg: string;
-  dot: string;
+  border: string;   // 왼쪽 강조 테두리 색상
+  bg: string;       // 카드 배경
+  cardEdge: string; // 카드 외곽 테두리 (상·우·하)
+  dot: string;      // 타임라인 점
+  titleFg: string;  // 제목 텍스트 색상
   label: string;
   labelFg: string;
   labelBg: string;
 };
 
 const CAT: Record<string, CatStyle> = {
-  worship:   {
-    border: "#8b5cf6", bg: "rgba(139,92,246,0.09)",
-    dot: "#a78bfa",    label: "예배",
-    labelFg: "#c4b5fd", labelBg: "rgba(139,92,246,0.20)",
+  worship: {
+    border: "#a78bfa", bg: "rgba(139,92,246,0.20)", cardEdge: "rgba(167,139,250,0.22)",
+    dot: "#c4b5fd", titleFg: "#ede9fe",
+    label: "예배", labelFg: "#ddd6fe", labelBg: "rgba(139,92,246,0.35)",
   },
-  lecture:   {
-    border: "#3b82f6", bg: "rgba(59,130,246,0.09)",
-    dot: "#60a5fa",    label: "강의",
-    labelFg: "#93c5fd", labelBg: "rgba(59,130,246,0.20)",
+  lecture: {
+    border: "#60a5fa", bg: "rgba(59,130,246,0.20)", cardEdge: "rgba(96,165,250,0.22)",
+    dot: "#93c5fd", titleFg: "#dbeafe",
+    label: "강의", labelFg: "#bfdbfe", labelBg: "rgba(59,130,246,0.35)",
   },
-  group:     {
-    border: "#10b981", bg: "rgba(16,185,129,0.09)",
-    dot: "#34d399",    label: "조모임",
-    labelFg: "#6ee7b7", labelBg: "rgba(16,185,129,0.20)",
+  group: {
+    border: "#34d399", bg: "rgba(16,185,129,0.18)", cardEdge: "rgba(52,211,153,0.20)",
+    dot: "#6ee7b7", titleFg: "#d1fae5",
+    label: "조모임", labelFg: "#a7f3d0", labelBg: "rgba(16,185,129,0.35)",
   },
-  meal:      {
-    border: "#f59e0b", bg: "rgba(245,158,11,0.09)",
-    dot: "#fbbf24",    label: "식사",
-    labelFg: "#fde68a", labelBg: "rgba(245,158,11,0.20)",
+  meal: {
+    border: "#fbbf24", bg: "rgba(245,158,11,0.20)", cardEdge: "rgba(251,191,36,0.22)",
+    dot: "#fde68a", titleFg: "#fef3c7",
+    label: "식사", labelFg: "#fde68a", labelBg: "rgba(245,158,11,0.35)",
   },
-  activity:  {
-    border: "#06b6d4", bg: "rgba(6,182,212,0.08)",
-    dot: "#22d3ee",    label: "활동",
-    labelFg: "#67e8f9", labelBg: "rgba(6,182,212,0.18)",
+  activity: {
+    border: "#22d3ee", bg: "rgba(6,182,212,0.18)", cardEdge: "rgba(34,211,238,0.20)",
+    dot: "#67e8f9", titleFg: "#cffafe",
+    label: "활동", labelFg: "#a5f3fc", labelBg: "rgba(6,182,212,0.32)",
   },
-  break:     {
-    border: "#475569", bg: "rgba(51,65,85,0.25)",
-    dot: "#64748b",    label: "휴식",
-    labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.30)",
+  break: {
+    border: "#64748b", bg: "rgba(71,85,105,0.32)", cardEdge: "rgba(100,116,139,0.25)",
+    dot: "#94a3b8", titleFg: "#cbd5e1",
+    label: "휴식", labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.40)",
   },
-  arrival:   {
-    border: "#475569", bg: "rgba(51,65,85,0.25)",
-    dot: "#64748b",    label: "등록",
-    labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.30)",
+  arrival: {
+    border: "#64748b", bg: "rgba(71,85,105,0.32)", cardEdge: "rgba(100,116,139,0.25)",
+    dot: "#94a3b8", titleFg: "#cbd5e1",
+    label: "등록", labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.40)",
   },
   departure: {
-    border: "#475569", bg: "rgba(51,65,85,0.25)",
-    dot: "#64748b",    label: "귀가",
-    labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.30)",
+    border: "#64748b", bg: "rgba(71,85,105,0.32)", cardEdge: "rgba(100,116,139,0.25)",
+    dot: "#94a3b8", titleFg: "#cbd5e1",
+    label: "귀가", labelFg: "#94a3b8", labelBg: "rgba(71,85,105,0.40)",
   },
-  notice:    {
-    border: "#e9b94a", bg: "rgba(233,185,74,0.08)",
-    dot: "#e9b94a",    label: "공지",
-    labelFg: "#fde68a", labelBg: "rgba(233,185,74,0.18)",
+  notice: {
+    border: "#fbbf24", bg: "rgba(233,185,74,0.20)", cardEdge: "rgba(233,185,74,0.22)",
+    dot: "#fde68a", titleFg: "#fef3c7",
+    label: "공지", labelFg: "#fde68a", labelBg: "rgba(233,185,74,0.35)",
   },
-  default:   {
-    border: "#334155", bg: "rgba(51,65,85,0.20)",
-    dot: "#475569",    label: "",
-    labelFg: "#94a3b8", labelBg: "rgba(51,65,85,0.20)",
+  default: {
+    border: "#334155", bg: "rgba(51,65,85,0.28)", cardEdge: "rgba(51,65,85,0.22)",
+    dot: "#475569", titleFg: "#e2e8f0",
+    label: "", labelFg: "#94a3b8", labelBg: "rgba(51,65,85,0.28)",
   },
 };
 
@@ -220,13 +219,13 @@ export default function SchedulePage() {
                     className="flex-1 rounded-xl px-3.5 py-2.5 mb-2 overflow-hidden"
                     style={{
                       background: cat.bg,
-                      border: "1px solid rgba(28,46,88,0.5)",
-                      borderLeft: `3px solid ${cat.border}`,
+                      border: `1px solid ${cat.cardEdge}`,
+                      borderLeft: `4px solid ${cat.border}`,
                     }}
                   >
                     {/* 제목 행 */}
                     <div className="flex items-start gap-2">
-                      <h3 className="text-white text-[13px] font-semibold leading-snug flex-1">
+                      <h3 className="text-[13px] font-semibold leading-snug flex-1" style={{ color: cat.titleFg }}>
                         {item.title}
                       </h3>
                       {/* 카테고리 배지 */}
