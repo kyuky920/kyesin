@@ -20,41 +20,75 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-// 연령대+성별 균형 라운드로빈 분배
-function distributeRoundRobin(members: Attendee[], slots: Attendee[][]): void {
-  const bands: Record<string, { male: Attendee[]; female: Attendee[] }> = {
-    "20_24": { male: [], female: [] },
-    "25_28": { male: [], female: [] },
+// birth_year → 연령대 (DB의 age_band 컬럼이 NULL이므로 직접 계산)
+function computeBand(birthYear: number): string {
+  if (!birthYear || birthYear <= 1900) return "29_plus";
+  const age = 2026 - birthYear;
+  if (age <= 24) return "20_24";
+  if (age <= 28) return "25_28";
+  return "29_plus";
+}
+
+// 인원 균등 + 동일 연령대 집중 배정
+// 1) 선배정(조장·초월제일) 인원을 반영한 목표치 계산 → 균등 분배 보장
+// 2) 20_24 → 25_28 → 29_plus 순 풀 + 순차 채우기 → 동일 연령대 집중
+function distributeBalanced(members: Attendee[], slots: Attendee[][]): void {
+  const n = slots.length;
+  const total = members.length + slots.reduce((s, sl) => s + sl.length, 0);
+  const base = Math.floor(total / n);
+  const extra = total % n;
+
+  // 현재 인원 적은 슬롯부터 +1 target 부여 (초월제일 선배정 슬롯은 이미 크므로 base만)
+  const bySize = slots.map((sl, i) => ({ i, len: sl.length }))
+    .sort((a, b) => a.len - b.len);
+  const targets = new Array<number>(n).fill(base);
+  for (let k = 0; k < extra; k++) targets[bySize[k].i]++;
+
+  // 연령대별 분류 + 내부 남녀 교차 셔플
+  const bandOrder = ["20_24", "25_28", "29_plus"];
+  const byBand: Record<string, { male: Attendee[]; female: Attendee[] }> = {
+    "20_24":   { male: [], female: [] },
+    "25_28":   { male: [], female: [] },
     "29_plus": { male: [], female: [] },
   };
-  for (const a of members) {
-    const band = a.age_band ?? "29_plus";
-    if (!bands[band]) bands[band] = { male: [], female: [] };
-    bands[band][a.gender].push(a);
-  }
-  for (const b of Object.values(bands)) {
-    b.male = shuffle(b.male);
-    b.female = shuffle(b.female);
+  for (const m of members) {
+    const b = computeBand(m.birth_year);
+    byBand[b][m.gender].push(m);
   }
 
-  let gi = 0;
-  const n = slots.length;
-  for (const { male, female } of Object.values(bands)) {
-    let mi = 0, fi = 0;
-    while (mi < male.length || fi < female.length) {
-      const slot = slots[gi % n];
-      const slotMales = slot.filter((m) => m.gender === "male").length;
-      const slotFemales = slot.filter((m) => m.gender === "female").length;
-      if (slotMales <= slotFemales && mi < male.length) slot.push(male[mi++]);
-      else if (fi < female.length) slot.push(female[fi++]);
-      else slot.push(male[mi++]);
-      gi++;
+  const bandQueues: Attendee[][] = bandOrder.map((b) => {
+    const males   = shuffle(byBand[b].male);
+    const females = shuffle(byBand[b].female);
+    const q: Attendee[] = [];
+    const max = Math.max(males.length, females.length);
+    for (let i = 0; i < max; i++) {
+      if (i < males.length)   q.push(males[i]);
+      if (i < females.length) q.push(females[i]);
     }
+    return q;
+  });
+
+  // 동일 연령대 집중: 20_24 전체 → 25_28 전체 → 29_plus 전체 순으로 배정
+  const pool: Attendee[] = [...bandQueues[0], ...bandQueues[1], ...bandQueues[2]];
+
+  // 순차 채우기: 앞 슬롯을 목표치까지 채운 뒤 다음 슬롯으로 이동
+  let si = 0;
+  for (const member of pool) {
+    while (si < n - 1 && slots[si].length >= targets[si]) si++;
+    slots[si].push(member);
   }
 }
 
 const TARGET_SIZE = 5;
 const MAX_SIZE = 6;
+
+const FLOWER_NAMES = [
+  "장미", "튤립", "라일락", "해바라기", "벚꽃",
+  "수선화", "코스모스", "진달래", "개나리", "목련",
+  "국화", "백합", "동백", "매화", "난초",
+  "수국", "안개꽃", "무궁화", "채송화", "나팔꽃",
+  "민들레", "봉선화", "카네이션", "클로버", "히아신스",
+];
 
 export async function POST() {
   try {
@@ -129,7 +163,7 @@ export async function POST() {
       const fixedSlotIdx = fixedLeaderIdx >= 0 ? fixedLeaderIdx : 0;
       for (const m of fixedMembers) slots[fixedSlotIdx].push(m);
 
-      distributeRoundRobin(regularMembers, slots);
+      distributeBalanced(regularMembers, slots);
     } else {
       // ── 조장 없을 때: 인원 기반 자동 계산 ──────────────
       numGroups = Math.max(
@@ -143,7 +177,7 @@ export async function POST() {
       // 초월제일교회 멤버를 첫 슬롯에 고정
       for (const m of fixedMembers) slots[0].push(m);
 
-      distributeRoundRobin(regularMembers, slots);
+      distributeBalanced(regularMembers, slots);
     }
 
     // 경고 수집
@@ -164,7 +198,7 @@ export async function POST() {
     const groupInserts = slots.map((_, i) => ({
       retreat_id: retreatId,
       group_code: String(i + 1),
-      group_name: `${i + 1}조`,
+      group_name: `${FLOWER_NAMES[i % FLOWER_NAMES.length]}조`,
       leader_attendee_id: leaderIds[i] ?? null,
       age_band: "mixed",
     }));

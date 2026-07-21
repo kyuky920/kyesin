@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   },
   {
     href: "/lookup",
-    label: "내 조",
+    label: "셀모임",
     activeOn: ["/lookup", "/me"],
     icon: (
       <path

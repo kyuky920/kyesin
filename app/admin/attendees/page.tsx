@@ -95,6 +95,9 @@ function AttendeesContent() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
+  const [showClearModal, setShowClearModal] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
+
   const loadAllAttendees = useCallback(async (invalidate = false) => {
     if (!invalidate) {
       try {
@@ -247,6 +250,18 @@ function AttendeesContent() {
     finally { setImporting(false); if (fileInputRef.current) fileInputRef.current.value = ""; }
   };
 
+  const handleClearAll = async () => {
+    setClearingAll(true);
+    try {
+      const res = await fetch("/api/admin/attendees", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok || data.error) { alert(data.error ?? "초기화 실패"); return; }
+      setShowClearModal(false);
+      await loadAllAttendees(true);
+    } catch { alert("네트워크 오류"); }
+    finally { setClearingAll(false); }
+  };
+
   const handleDelete = async (id: string, name: string) => {
     if (!confirm(`${name}을(를) 삭제하시겠습니까?`)) return;
     setDeletingId(id);
@@ -279,6 +294,17 @@ function AttendeesContent() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowClearModal(true)}
+            title="전체 참석자 초기화"
+            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-red-800/50 bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:border-red-700/60 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            전체 초기화
+          </button>
+
           <button
             onClick={() => loadAllAttendees(true)}
             title="새로고침"
@@ -523,6 +549,43 @@ function AttendeesContent() {
           </table>
         </div>
       </div>
+
+      {showClearModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}>
+          <div className="w-full max-w-sm bg-navy-mid border border-red-800/50 rounded-2xl overflow-hidden">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-red-900/40 border border-red-700/40 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+                  </svg>
+                </div>
+                <h2 className="text-white font-bold text-base">전체 참석자 초기화</h2>
+              </div>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                현재 수련회에 등록된 <span className="text-red-300 font-semibold">전체 {allAttendees.length}명</span>의 참석자 데이터가 삭제됩니다.
+              </p>
+              <p className="text-slate-500 text-xs mt-2">이 작업은 되돌릴 수 없습니다.</p>
+            </div>
+            <div className="flex gap-2 px-6 pb-5">
+              <button
+                onClick={() => setShowClearModal(false)}
+                disabled={clearingAll}
+                className="flex-1 py-3 rounded-xl border border-slate-600 text-slate-300 text-sm font-medium hover:border-slate-400 disabled:opacity-40"
+              >
+                취소
+              </button>
+              <button
+                onClick={handleClearAll}
+                disabled={clearingAll}
+                className="flex-1 py-3 rounded-xl bg-red-700 hover:bg-red-600 text-white text-sm font-bold disabled:opacity-60 transition-colors"
+              >
+                {clearingAll ? "삭제 중..." : "전체 삭제"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}>

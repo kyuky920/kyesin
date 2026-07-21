@@ -40,3 +40,4 @@ scripts/check-*.mjs
 scripts/import-once.mjs
 scripts/fix-data.mjs
 scripts/update-schedule.mjs
+.env*

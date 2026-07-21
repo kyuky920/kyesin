@@ -329,7 +329,11 @@ export default function GroupsPage() {
                   {/* 조 헤더 */}
                   <div className="px-4 py-3 border-b border-slate-700/50">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-gold font-bold text-lg">{group.group_code}조</span>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-gold font-bold text-lg">{group.group_code}조</span>
+                        <span className="text-slate-500 text-xs">·</span>
+                        <span className="text-white font-semibold text-sm">{group.group_name}</span>
+                      </div>
                       <div className="flex items-center gap-1.5 text-xs">
                         <span className="text-blue-400">남 {males}</span>
                         <span className="text-slate-600">·</span>
@@ -371,26 +375,20 @@ export default function GroupsPage() {
                             )}
                           </div>
 
-                          {/* 이름 + 교회 + 나이 */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <p className={`text-[13px] font-medium truncate leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
-                                {member.full_name}
-                              </p>
-                              <span className="text-[10px] text-slate-500 flex-shrink-0">{ageLabel(member.birth_year)}</span>
-                            </div>
-                            {(() => {
-                              const c = getChurchColor(member.churches?.canonical_name);
-                              return (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md mt-0.5"
-                                  style={{ background: c.bg, border: `1px solid ${c.border}`, color: c.text }}
-                                >
-                                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: c.dot }} />
-                                  {member.churches?.canonical_name ?? "미상"}
-                                </span>
-                              );
-                            })()}
+                          {/* 이름 + 교회(컬러 텍스트) + 나이 */}
+                          <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
+                            <p className={`text-[13px] font-medium truncate min-w-0 leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
+                              {member.full_name}
+                            </p>
+                            {member.churches?.canonical_name && (
+                              <span
+                                className="text-[10px] font-medium flex-shrink-0 truncate max-w-[5rem]"
+                                style={{ color: getChurchColor(member.churches.canonical_name).dot }}
+                              >
+                                {member.churches.canonical_name}
+                              </span>
+                            )}
+                            <span className="text-[10px] text-slate-500 flex-shrink-0 ml-auto">{ageLabel(member.birth_year)}</span>
                           </div>
 
                           {/* 이동 / 제거 버튼 */}

@@ -160,15 +160,31 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// ─── DELETE /api/admin/attendees?id=xxx ─────────────────────
+// ─── DELETE /api/admin/attendees?id=xxx  (id 없으면 전체 삭제) ──
 export async function DELETE(req: NextRequest) {
   try {
     const id = req.nextUrl.searchParams.get("id");
-    if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
     const supabase = createClient();
-    const { error } = await supabase.from("attendees").delete().eq("id", id);
+
+    if (id) {
+      const { error } = await supabase.from("attendees").delete().eq("id", id);
+      if (error) throw error;
+      return NextResponse.json({ success: true });
+    }
+
+    // 전체 삭제: 현재 수련회의 모든 참석자 삭제
+    const { data: retreat } = await supabase
+      .from("retreats").select("id").order("start_date", { ascending: false }).limit(1).single();
+    if (!retreat) return NextResponse.json({ error: "수련회 데이터가 없습니다." }, { status: 400 });
+    const retreatId = (retreat as { id: string }).id;
+
+    const { count: total } = await supabase
+      .from("attendees").select("id", { count: "exact", head: true }).eq("retreat_id", retreatId);
+
+    const { error } = await supabase.from("attendees").delete().eq("retreat_id", retreatId);
     if (error) throw error;
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ success: true, deleted: total ?? 0 });
   } catch (err) {
     console.error("Delete attendee error:", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "삭제 오류" }, { status: 500 });
