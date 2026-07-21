@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createAdminClient as createClient } from "@/lib/supabase/admin";
 import { getChurchColor } from "@/lib/churchColors";
+import { getVenue } from "@/lib/venues";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -321,8 +322,10 @@ function StaffChurchView({ attendee, members, id }: { attendee: AttendeeRow; mem
                   )}
                 </span>
                 <span className="text-right">
-                  <span className="text-gold text-xs font-semibold">{m.group_code}조</span>
-                  <span className="block text-white text-xs font-bold">{m.group_name}</span>
+                  <span className="text-gold text-xs font-semibold">{m.group_code}조 · {m.group_name}</span>
+                  {getVenue(m.group_code ?? "") && (
+                    <span className="block text-slate-400 text-[10px]">{getVenue(m.group_code ?? "")}</span>
+                  )}
                 </span>
               </div>
             ))}
@@ -365,18 +368,29 @@ function StaffAllGroupsView({ groups, id }: { groups: StaffGroup[]; id: string }
             const females = g.members.length - males;
             return (
               <div key={g.id} className="rounded-2xl overflow-hidden" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
-                <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2e58" }}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-gold font-bold">{g.group_code}조</span>
-                    <span className="text-slate-500 text-xs">·</span>
-                    <span className="text-white font-semibold text-sm">{g.group_name}</span>
+                <div className="px-4 py-3" style={{ borderBottom: "1px solid #1c2e58" }}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gold font-bold">{g.group_code}조</span>
+                      <span className="text-slate-500 text-xs">·</span>
+                      <span className="text-white font-semibold text-sm">{g.group_name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs">
+                      <span className="text-blue-400">남 {males}</span>
+                      <span className="text-slate-700">·</span>
+                      <span className="text-pink-400">여 {females}</span>
+                      <span className="text-slate-500 ml-1">{g.members.length}명</span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-blue-400">남 {males}</span>
-                    <span className="text-slate-700">·</span>
-                    <span className="text-pink-400">여 {females}</span>
-                    <span className="text-slate-500 ml-1">{g.members.length}명</span>
-                  </div>
+                  {getVenue(g.group_code) && (
+                    <div className="flex items-center gap-1 mt-1">
+                      <svg className="w-3 h-3 text-slate-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                      <span className="text-slate-500 text-[11px]">{getVenue(g.group_code)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="divide-y divide-slate-800/60">
                   {g.members.map((m) => {
@@ -495,6 +509,20 @@ export default async function MePage({
                 </p>
               </div>
             </div>
+
+            {/* 장소 */}
+            {getVenue(group.group_code) && (
+              <div className="flex items-center gap-2 mb-4 px-3 py-2.5 rounded-xl" style={{ background: "rgba(233,185,74,0.06)", border: "1px solid rgba(233,185,74,0.15)" }}>
+                <svg className="w-4 h-4 text-gold/70 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <div>
+                  <p className="text-gold/60 text-[10px] font-semibold uppercase tracking-wider">셀모임 장소</p>
+                  <p className="text-white text-sm font-bold">{getVenue(group.group_code)}</p>
+                </div>
+              </div>
+            )}
 
             {/* 통계 */}
             <div className="flex gap-3 mb-4">
