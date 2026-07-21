@@ -536,20 +536,22 @@ export default function GroupsPage() {
                                 </span>
                               )}
                             </div>
-                            <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
-                              <p className={`text-[13px] font-medium truncate min-w-0 leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
+                            <div className="flex-1 min-w-0">
+                              <p className={`text-[13px] font-medium leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
                                 {member.full_name}
                               </p>
-                              {member.churches?.canonical_name && (
-                                <span
-                                  className="text-[10px] font-medium flex-shrink-0 truncate max-w-[4rem]"
-                                  style={{ color: getChurchColor(member.churches.canonical_name).dot }}
-                                >
-                                  {member.churches.canonical_name}
-                                </span>
-                              )}
-                              <DayBadges d1={member.attends_day1} d2={member.attends_day2} d3={member.attends_day3} />
-                              <span className="text-[10px] text-slate-500 flex-shrink-0 ml-auto">{ageLabel(member.birth_year)}</span>
+                              <div className="flex items-center gap-1 mt-0.5">
+                                {member.churches?.canonical_name && (
+                                  <span
+                                    className="text-[10px] font-medium truncate"
+                                    style={{ color: getChurchColor(member.churches.canonical_name).dot }}
+                                  >
+                                    {member.churches.canonical_name}
+                                  </span>
+                                )}
+                                <DayBadges d1={member.attends_day1} d2={member.attends_day2} d3={member.attends_day3} />
+                                <span className="text-[10px] text-slate-600">{ageLabel(member.birth_year)}</span>
+                              </div>
                             </div>
                             <div className="flex items-center gap-0.5 flex-shrink-0">
                               <button
@@ -607,18 +609,20 @@ export default function GroupsPage() {
                       <span className={`flex-shrink-0 text-sm ${a.gender === "male" ? "text-blue-400" : "text-pink-400"}`}>
                         {a.gender === "male" ? "♂" : "♀"}
                       </span>
-                      <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
-                        <p className="text-slate-200 text-[13px] font-medium truncate min-w-0">{a.full_name}</p>
-                        {a.churches?.canonical_name && (
-                          <span
-                            className="text-[10px] font-medium flex-shrink-0 truncate max-w-[4.5rem]"
-                            style={{ color: getChurchColor(a.churches.canonical_name).dot }}
-                          >
-                            {a.churches.canonical_name}
-                          </span>
-                        )}
-                        <DayBadges d1={a.attends_day1} d2={a.attends_day2} d3={a.attends_day3} />
-                        <span className="text-[10px] text-slate-500 flex-shrink-0 ml-auto">{ageLabel(a.birth_year)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-slate-200 text-[13px] font-medium leading-tight">{a.full_name}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          {a.churches?.canonical_name && (
+                            <span
+                              className="text-[10px] font-medium truncate"
+                              style={{ color: getChurchColor(a.churches.canonical_name).dot }}
+                            >
+                              {a.churches.canonical_name}
+                            </span>
+                          )}
+                          <DayBadges d1={a.attends_day1} d2={a.attends_day2} d3={a.attends_day3} />
+                          <span className="text-[10px] text-slate-600">{ageLabel(a.birth_year)}</span>
+                        </div>
                       </div>
                       <button
                         onClick={() => setAssigningMember(a)}

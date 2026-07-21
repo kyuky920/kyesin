@@ -122,8 +122,9 @@ async function main() {
   const sheetName = wb.SheetNames.includes("참석명단") ? "참석명단" : wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];
   const rawRows = xlsx.utils.sheet_to_json(ws, { header: 1 }) as (string | number | undefined)[][];
-  // 인덱스 0: 타이틀 행, 1~: 실제 데이터
-  const dataRows = rawRows.slice(1).filter((r) => r[1] && r[2]);
+  // 첫 행이 숫자(등록번호)면 헤더 없음, 문자열이면 타이틀 행으로 간주하고 스킵
+  const hasHeader = isNaN(Number(rawRows[0]?.[0]));
+  const dataRows = (hasHeader ? rawRows.slice(1) : rawRows).filter((r) => r[1] && r[2]);
 
   // ── 파싱 ───────────────────────────────────────────────
   const parsed = dataRows.map((r, idx) => {
