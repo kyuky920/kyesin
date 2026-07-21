@@ -14,6 +14,9 @@ interface AttendeeRow {
   is_staff: boolean;
   church_id: string | null;
   retreat_id: string | null;
+  attends_day1: boolean;
+  attends_day2: boolean;
+  attends_day3: boolean;
   churches: { canonical_name: string } | null;
   group_assignments: {
     retreat_groups: { id: string; group_code: string; group_name: string } | null;
@@ -24,7 +27,11 @@ interface MemberRow {
   id: string;
   full_name: string;
   gender: "male" | "female";
+  birth_year: number;
   is_leader: boolean;
+  attends_day1: boolean;
+  attends_day2: boolean;
+  attends_day3: boolean;
   churches: { canonical_name: string } | null;
 }
 
@@ -59,6 +66,7 @@ async function getAttendee(id: string): Promise<AttendeeRow | null> {
     .from("attendees")
     .select(`
       id, full_name, birth_year, gender, is_staff, church_id, retreat_id,
+      attends_day1, attends_day2, attends_day3,
       churches(canonical_name),
       group_assignments(
         retreat_groups(id, group_code, group_name)
@@ -74,7 +82,7 @@ async function getGroupMembers(groupId: string, myId: string): Promise<MemberRow
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("group_assignments")
-    .select(`attendees(id, full_name, gender, is_leader, churches(canonical_name))`)
+    .select(`attendees(id, full_name, gender, birth_year, is_leader, attends_day1, attends_day2, attends_day3, churches(canonical_name))`)
     .eq("group_id", groupId);
   if (error || !data) return [];
   return (data as unknown as { attendees: MemberRow | null }[])
@@ -165,6 +173,21 @@ async function getChurchMembersForStaff(churchId: string, retreatId: string): Pr
 function ageLabel(birthYear: number) {
   if (!birthYear || birthYear <= 1900) return "";
   return `${2026 - birthYear}세`;
+}
+
+function DayBadges({ d1, d2, d3 }: { d1: boolean; d2: boolean; d3: boolean }) {
+  return (
+    <span className="flex items-center gap-px flex-shrink-0">
+      {(["목", "금", "토"] as const).map((label, i) => {
+        const active = [d1, d2, d3][i];
+        return (
+          <span key={label} className={`text-[8px] font-bold leading-none px-0.5 py-px rounded-sm ${active ? "text-gold/80" : "text-slate-700"}`}>
+            {label}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 // ─── Shared UI ───────────────────────────────────────────────────────────────
@@ -545,8 +568,16 @@ export default async function MePage({
               {/* 나 */}
               <div className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={{ background: "rgba(233,185,74,0.08)", border: "1px solid rgba(233,185,74,0.15)" }}>
                 <span className="text-sm">{attendee.gender === "male" ? "👨" : "👩"}</span>
-                <span className="text-white text-sm font-semibold flex-1">{attendee.full_name}</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a" }}>나</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-white text-sm font-semibold flex-1">{attendee.full_name}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a" }}>나</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <DayBadges d1={attendee.attends_day1} d2={attendee.attends_day2} d3={attendee.attends_day3} />
+                    {attendee.birth_year && <span className="text-[10px] text-slate-500">{ageLabel(attendee.birth_year)}</span>}
+                  </div>
+                </div>
               </div>
               {/* 조장 먼저 */}
               {[...members].sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0)).map((m) => {
@@ -561,24 +592,30 @@ export default async function MePage({
                     }
                   >
                     <span className="text-sm">{m.gender === "male" ? "👨" : "👩"}</span>
-                    <span className={`text-sm font-medium flex-1 ${m.is_leader ? "text-emerald-300" : "text-slate-200"}`}>
-                      {m.full_name}
-                    </span>
-                    <div className="flex items-center gap-1.5 ml-auto">
-                      {m.is_leader && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(16,185,129,0.15)", color: "#6ee7b7" }}>
-                          조장
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-medium flex-1 ${m.is_leader ? "text-emerald-300" : "text-slate-200"}`}>
+                          {m.full_name}
                         </span>
-                      )}
-                      {m.churches?.canonical_name && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
-                          style={{ background: cc.bg, border: `1px solid ${cc.border}`, color: cc.text }}
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cc.dot }} />
-                          {m.churches.canonical_name}
-                        </span>
-                      )}
+                        {m.is_leader && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(16,185,129,0.15)", color: "#6ee7b7" }}>
+                            조장
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {m.churches?.canonical_name && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md"
+                            style={{ background: cc.bg, border: `1px solid ${cc.border}`, color: cc.text }}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cc.dot }} />
+                            {m.churches.canonical_name}
+                          </span>
+                        )}
+                        <DayBadges d1={m.attends_day1} d2={m.attends_day2} d3={m.attends_day3} />
+                        {m.birth_year && <span className="text-[10px] text-slate-500">{ageLabel(m.birth_year)}</span>}
+                      </div>
                     </div>
                   </div>
                 );
