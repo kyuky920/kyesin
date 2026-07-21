@@ -9,6 +9,9 @@ interface Attendee {
   age_band: string;
   church_id: string | null;
   churches: { canonical_name: string } | null;
+  attends_day1: boolean;
+  attends_day2: boolean;
+  attends_day3: boolean;
 }
 
 function shuffle<T>(arr: T[]): T[] {
@@ -59,13 +62,23 @@ function distributeBalanced(members: Attendee[], slots: Attendee[][]): void {
   const bandQueues: Attendee[][] = bandOrder.map((b) => {
     const males   = shuffle(byBand[b].male);
     const females = shuffle(byBand[b].female);
+    // 남녀 교차
     const q: Attendee[] = [];
     const max = Math.max(males.length, females.length);
     for (let i = 0; i < max; i++) {
       if (i < males.length)   q.push(males[i]);
       if (i < females.length) q.push(females[i]);
     }
-    return q;
+    // 목요일 참석 여부로 교차 정렬 → 각 조의 목/금 셀모임 인원 균등 분배
+    const day1yes = q.filter((m) => m.attends_day1);
+    const day1no  = q.filter((m) => !m.attends_day1);
+    const balanced: Attendee[] = [];
+    const maxLen = Math.max(day1yes.length, day1no.length);
+    for (let i = 0; i < maxLen; i++) {
+      if (i < day1yes.length) balanced.push(day1yes[i]);
+      if (i < day1no.length)  balanced.push(day1no[i]);
+    }
+    return balanced;
   });
 
   // 동일 연령대 집중: 20_24 전체 → 25_28 전체 → 29_plus 전체 순으로 배정
@@ -121,7 +134,7 @@ export async function POST() {
     // 조장 로드
     const { data: leaderData } = await supabase
       .from("attendees")
-      .select("id, full_name, gender, birth_year, age_band, church_id, churches(canonical_name)")
+      .select("id, full_name, gender, birth_year, age_band, church_id, attends_day1, attends_day2, attends_day3, churches(canonical_name)")
       .eq("retreat_id", retreatId)
       .eq("is_staff", false)
       .eq("is_leader", true);
@@ -130,7 +143,7 @@ export async function POST() {
     // 일반 참석자 로드 (교역자·조장 제외)
     const { data: memberData, error: mErr } = await supabase
       .from("attendees")
-      .select("id, full_name, gender, birth_year, age_band, church_id, churches(canonical_name)")
+      .select("id, full_name, gender, birth_year, age_band, church_id, attends_day1, attends_day2, attends_day3, churches(canonical_name)")
       .eq("retreat_id", retreatId)
       .eq("is_staff", false)
       .eq("is_leader", false);

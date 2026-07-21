@@ -293,16 +293,16 @@ function AttendeesContent() {
             <p className="text-slate-400 text-xs">총 {allAttendees.length}명</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           <button
             onClick={() => setShowClearModal(true)}
             title="전체 참석자 초기화"
-            className="flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg border border-red-800/50 bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:border-red-700/60 transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg border border-red-800/50 bg-red-900/20 text-red-400 hover:bg-red-900/40 hover:border-red-700/60 transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
             </svg>
-            전체 초기화
+            <span className="hidden sm:inline">전체 초기화</span>
           </button>
 
           <button
@@ -315,28 +315,28 @@ function AttendeesContent() {
             </svg>
           </button>
 
-          <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importingLeaders ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-900/50 hover:bg-blue-800/50 border border-blue-600/40 text-blue-300"}`}>
+          <label className={`flex items-center gap-1.5 text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg cursor-pointer transition-colors ${importingLeaders ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-blue-900/50 hover:bg-blue-800/50 border border-blue-600/40 text-blue-300"}`}>
             {importingLeaders
-              ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>처리 중...</>
-              : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>조장 업로드</>}
+              ? <><svg className="w-4 h-4 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg><span className="hidden sm:inline">처리 중...</span></>
+              : <><svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg><span className="hidden sm:inline">조장 업로드</span></>}
             <input ref={leaderFileRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleLeaderFileChange} disabled={importingLeaders} />
           </label>
 
-          <label className={`flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg cursor-pointer transition-colors ${importing ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-green-800/60 hover:bg-green-700/60 border border-green-600/40 text-green-300"}`}>
+          <label className={`flex items-center gap-1.5 text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg cursor-pointer transition-colors ${importing ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-green-800/60 hover:bg-green-700/60 border border-green-600/40 text-green-300"}`}>
             {importing
-              ? <><svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>업로드 중...</>
-              : <><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>엑셀 업로드</>}
+              ? <><svg className="w-4 h-4 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg><span className="hidden sm:inline">업로드 중...</span></>
+              : <><svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg><span className="hidden sm:inline">엑셀 업로드</span></>}
             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileChange} disabled={importing} />
           </label>
 
           <button
             onClick={() => { setShowAddModal(true); setAddError(""); setForm(EMPTY_FORM); }}
-            className="flex items-center gap-2 text-sm font-semibold px-3 py-2 rounded-lg bg-gold/20 hover:bg-gold/30 border border-gold/40 text-gold transition-colors"
+            className="flex items-center gap-1.5 text-sm font-semibold px-2 sm:px-3 py-2 rounded-lg bg-gold/20 hover:bg-gold/30 border border-gold/40 text-gold transition-colors"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            수동 등록
+            <span className="hidden sm:inline">수동 등록</span>
           </button>
         </div>
       </header>
@@ -434,11 +434,88 @@ function AttendeesContent() {
           )}
         </div>
 
-        {filteredSorted.length > 100 && (
-          <p className="text-slate-400 text-xs mb-2">전체 {filteredSorted.length}명 표시 중</p>
+        {filteredSorted.length > 0 && (
+          <p className="text-slate-400 text-xs mb-2">총 {filteredSorted.length}명</p>
         )}
 
-        <div className="overflow-x-auto rounded-xl border border-slate-700">
+        {/* 모바일 카드 리스트 */}
+        <div className="block sm:hidden space-y-2">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <svg className="w-5 h-5 text-gold animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+          ) : filteredSorted.length === 0 ? (
+            <p className="text-center text-slate-500 py-10 text-sm">참석자 데이터가 없습니다.</p>
+          ) : (
+            filteredSorted.map((a) => {
+              const group = a.group_assignments?.[0]?.retreat_groups;
+              return (
+                <div key={a.id} className={`rounded-xl border p-3 ${a.is_staff ? "bg-amber-900/10 border-amber-800/30" : "bg-navy-mid border-slate-700"}`}>
+                  {/* 이름 + 조 + 삭제 */}
+                  <div className="flex items-start justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                      <span className="text-white font-semibold text-sm">{a.full_name}</span>
+                      {a.is_leader && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">조장</span>}
+                      {a.is_staff && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">교역자</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      {group ? (
+                        <span className="text-xs bg-gold/20 text-gold border border-gold/30 px-2 py-0.5 rounded-full">{group.group_code}조</span>
+                      ) : a.is_staff ? (
+                        <span className="text-xs text-amber-600">해당없음</span>
+                      ) : (
+                        <span className="text-xs text-slate-600">미배정</span>
+                      )}
+                      <button
+                        onClick={() => handleDelete(a.id, a.full_name)}
+                        disabled={deletingId === a.id}
+                        className="text-slate-600 hover:text-red-400 transition-colors disabled:opacity-40 p-1"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                  {/* 교회 · 성별 · 생년 · 참석일 */}
+                  <div className="flex items-center gap-2 flex-wrap text-xs mb-2">
+                    <span className="text-slate-400">{a.churches?.canonical_name ?? "-"}</span>
+                    <span className={`px-1.5 py-0.5 rounded-full border ${a.gender === "male" ? "bg-blue-900/30 border-blue-700/40 text-blue-300" : "bg-pink-900/30 border-pink-700/40 text-pink-300"}`}>
+                      {a.gender === "male" ? "남" : "여"}
+                    </span>
+                    <span className="text-slate-500">{a.birth_year}</span>
+                    <span className="text-slate-500">{attendanceLabel(a)}</span>
+                  </div>
+                  {/* 역할 토글 */}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleToggleRole(a, "is_leader")}
+                      disabled={togglingId === a.id || a.is_staff}
+                      title={a.is_leader ? "조장 해제" : "조장 지정"}
+                      className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors disabled:opacity-40 ${a.is_leader ? "bg-blue-500/25 border-blue-400/50 text-blue-300" : "bg-transparent border-slate-600 text-slate-500 hover:border-blue-500/50 hover:text-blue-400"}`}
+                    >
+                      조장
+                    </button>
+                    <button
+                      onClick={() => handleToggleRole(a, "is_staff")}
+                      disabled={togglingId === a.id}
+                      title={a.is_staff ? "교역자 해제" : "교역자 지정"}
+                      className={`text-[10px] font-bold px-2 py-1 rounded border transition-colors ${a.is_staff ? "bg-amber-500/25 border-amber-400/50 text-amber-300" : "bg-transparent border-slate-600 text-slate-500 hover:border-amber-500/50 hover:text-amber-400"}`}
+                    >
+                      교역자
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* 데스크톱 테이블 */}
+        <div className="hidden sm:block overflow-x-auto rounded-xl border border-slate-700">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-navy-mid border-b border-slate-700">

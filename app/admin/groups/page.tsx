@@ -11,6 +11,9 @@ interface GroupMember {
   gender: "male" | "female";
   birth_year: number;
   is_leader: boolean;
+  attends_day1: boolean;
+  attends_day2: boolean;
+  attends_day3: boolean;
   churches: { canonical_name: string } | null;
 }
 
@@ -97,6 +100,9 @@ export default function GroupsPage() {
               gender: "male" | "female";
               birth_year: number;
               is_leader: boolean;
+              attends_day1: boolean;
+              attends_day2: boolean;
+              attends_day3: boolean;
               churches: { canonical_name: string } | null;
             } | null;
           }[];
@@ -119,6 +125,9 @@ export default function GroupsPage() {
             gender: a.attendees!.gender,
             birth_year: a.attendees!.birth_year,
             is_leader: a.attendees!.is_leader,
+            attends_day1: a.attendees!.attends_day1,
+            attends_day2: a.attendees!.attends_day2,
+            attends_day3: a.attendees!.attends_day3,
             churches: a.attendees!.churches,
           })),
       }));
@@ -375,19 +384,29 @@ export default function GroupsPage() {
                             )}
                           </div>
 
-                          {/* 이름 + 교회(컬러 텍스트) + 나이 */}
+                          {/* 이름 + 교회(컬러 텍스트) + 참여일 + 나이 */}
                           <div className="flex-1 min-w-0 flex items-center gap-1.5 overflow-hidden">
                             <p className={`text-[13px] font-medium truncate min-w-0 leading-tight ${member.is_leader ? "text-gold" : "text-slate-200"}`}>
                               {member.full_name}
                             </p>
                             {member.churches?.canonical_name && (
                               <span
-                                className="text-[10px] font-medium flex-shrink-0 truncate max-w-[5rem]"
+                                className="text-[10px] font-medium flex-shrink-0 truncate max-w-[4rem]"
                                 style={{ color: getChurchColor(member.churches.canonical_name).dot }}
                               >
                                 {member.churches.canonical_name}
                               </span>
                             )}
+                            <span className="flex items-center gap-px flex-shrink-0">
+                              {(["목", "금", "토"] as const).map((label, i) => {
+                                const active = [member.attends_day1, member.attends_day2, member.attends_day3][i];
+                                return (
+                                  <span key={label} className={`text-[8px] font-bold leading-none px-0.5 py-px rounded-sm ${active ? "text-gold/80" : "text-slate-700"}`}>
+                                    {label}
+                                  </span>
+                                );
+                              })}
+                            </span>
                             <span className="text-[10px] text-slate-500 flex-shrink-0 ml-auto">{ageLabel(member.birth_year)}</span>
                           </div>
 

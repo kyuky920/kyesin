@@ -9,6 +9,9 @@ type RawAssignment = {
     gender: "male" | "female";
     birth_year: number;
     is_leader: boolean;
+    attends_day1: boolean;
+    attends_day2: boolean;
+    attends_day3: boolean;
     churches: { canonical_name: string } | null;
   } | null;
 };
@@ -36,7 +39,7 @@ export async function GET() {
         id, group_code, group_name, leader_attendee_id,
         group_assignments(
           id,
-          attendees(id, full_name, gender, birth_year, is_leader, churches(canonical_name))
+          attendees(id, full_name, gender, birth_year, is_leader, attends_day1, attends_day2, attends_day3, churches(canonical_name))
         )
       `)
       .eq("retreat_id", retreatId)
