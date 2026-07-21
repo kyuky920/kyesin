@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createAdminClient as createClient } from "@/lib/supabase/admin";
 import { getChurchColor } from "@/lib/churchColors";
 import { getVenue } from "@/lib/venues";
+import ChurchMap from "@/components/ChurchMap";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -595,6 +596,9 @@ export default async function MePage({
             <p className="text-slate-400 text-sm">조편성이 완료되면 바로 확인할 수 있어요.</p>
           </div>
         )}
+
+        {/* 교회 안내도 */}
+        <ChurchMap venueName={group ? getVenue(group.group_code) : null} />
       </div>
     </main>
   );
