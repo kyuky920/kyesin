@@ -46,7 +46,7 @@ const EMPTY_FORM: AddForm = {
 
 const CACHE_KEY = "keysin2026_admin_attendees";
 const CACHE_TS_KEY = "keysin2026_admin_attendees_ts";
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 1000; // 1분
 
 function attendanceLabel(a: AttendeeRow): string {
   const cnt = [a.attends_day1, a.attends_day2, a.attends_day3].filter(Boolean).length;
@@ -189,7 +189,13 @@ function AttendeesContent() {
         body: JSON.stringify({ [field]: !a[field] }),
       });
       if (res.ok) {
-        setAllAttendees((prev) => prev.map((r) => r.id === a.id ? { ...r, [field]: !a[field] } : r));
+        setAllAttendees((prev) => {
+          const updated = prev.map((r) => r.id === a.id ? { ...r, [field]: !a[field] } : r);
+          try {
+            sessionStorage.setItem(CACHE_KEY, JSON.stringify(updated));
+          } catch { /* ignore */ }
+          return updated;
+        });
       }
     } catch { /* ignore */ }
     finally { setTogglingId(null); }
