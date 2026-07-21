@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createAdminClient as createClient } from "@/lib/supabase/admin";
 
+export const dynamic = "force-dynamic";
+
 interface AttendeeStats {
   id: string;
   gender: "male" | "female";
