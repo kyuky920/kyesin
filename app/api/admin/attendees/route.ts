@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
       .from("attendees")
       .select(
         `id, full_name, gender, birth_year, is_staff, is_leader,
-         attends_day1, attends_day2, attends_day3, lodging_required,
+         attends_day1, attends_day2, attends_day3, lodging_required, arrival_notes,
          churches(canonical_name),
          group_assignments(retreat_groups(group_code))`,
         { count: "exact" }

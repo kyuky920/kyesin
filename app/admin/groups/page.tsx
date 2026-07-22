@@ -34,6 +34,7 @@ interface UnassignedAttendee {
   attends_day1: boolean;
   attends_day2: boolean;
   attends_day3: boolean;
+  arrival_notes: string | null;
   churches: { canonical_name: string } | null;
 }
 
@@ -182,6 +183,7 @@ export default function GroupsPage() {
           attends_day1: boolean;
           attends_day2: boolean;
           attends_day3: boolean;
+          arrival_notes: string | null;
           churches: { canonical_name: string } | null;
           group_assignments: { retreat_groups: { group_code: string } | null }[];
         }[];
@@ -197,9 +199,15 @@ export default function GroupsPage() {
           attends_day1: r.attends_day1,
           attends_day2: r.attends_day2,
           attends_day3: r.attends_day3,
+          arrival_notes: r.arrival_notes,
           churches: r.churches,
         }))
-        .sort((a, b) => a.full_name.localeCompare(b.full_name, "ko"));
+        .sort((a, b) => {
+          const aReq = a.arrival_notes === "ASSIGNMENT_REQUESTED";
+          const bReq = b.arrival_notes === "ASSIGNMENT_REQUESTED";
+          if (aReq !== bReq) return aReq ? -1 : 1;
+          return a.full_name.localeCompare(b.full_name, "ko");
+        });
       setUnassigned(rows);
     } catch { /* ignore */ }
   }, []);
@@ -248,9 +256,15 @@ export default function GroupsPage() {
         attends_day1: member.attends_day1,
         attends_day2: member.attends_day2,
         attends_day3: member.attends_day3,
+        arrival_notes: null,
         churches: member.churches,
       };
-      setUnassigned((prev) => [...prev, ua].sort((a, b) => a.full_name.localeCompare(b.full_name, "ko")));
+      setUnassigned((prev) => [...prev, ua].sort((a, b) => {
+        const aReq = a.arrival_notes === "ASSIGNMENT_REQUESTED";
+        const bReq = b.arrival_notes === "ASSIGNMENT_REQUESTED";
+        if (aReq !== bReq) return aReq ? -1 : 1;
+        return a.full_name.localeCompare(b.full_name, "ko");
+      }));
     } catch {
       alert("제거 실패. 다시 시도해 주세요.");
     } finally {
@@ -658,7 +672,14 @@ export default function GroupsPage() {
                         {a.gender === "male" ? "♂" : "♀"}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-slate-200 text-[13px] font-medium leading-tight">{a.full_name}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-slate-200 text-[13px] font-medium leading-tight">{a.full_name}</p>
+                          {a.arrival_notes === "ASSIGNMENT_REQUESTED" && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0" style={{ background: "rgba(233,185,74,0.15)", color: "#e9b94a", border: "1px solid rgba(233,185,74,0.3)" }}>
+                              요청
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center gap-1 mt-0.5">
                           {a.churches?.canonical_name && (
                             <span

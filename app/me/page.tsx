@@ -3,6 +3,8 @@ import { createAdminClient as createClient } from "@/lib/supabase/admin";
 import { getChurchColor } from "@/lib/churchColors";
 import { getVenue } from "@/lib/venues";
 import ChurchMap from "@/components/ChurchMap";
+import RequestAssignmentButton from "@/components/RequestAssignmentButton";
+import ViewTracker from "@/components/ViewTracker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -17,6 +19,7 @@ interface AttendeeRow {
   attends_day1: boolean;
   attends_day2: boolean;
   attends_day3: boolean;
+  arrival_notes: string | null;
   churches: { canonical_name: string } | null;
   group_assignments: {
     retreat_groups: { id: string; group_code: string; group_name: string } | null;
@@ -66,7 +69,7 @@ async function getAttendee(id: string): Promise<AttendeeRow | null> {
     .from("attendees")
     .select(`
       id, full_name, birth_year, gender, is_staff, church_id, retreat_id,
-      attends_day1, attends_day2, attends_day3,
+      attends_day1, attends_day2, attends_day3, arrival_notes,
       churches(canonical_name),
       group_assignments(
         retreat_groups(id, group_code, group_name)
@@ -492,6 +495,7 @@ export default async function MePage({
 
   return (
     <main className="min-h-screen bg-navy flex flex-col pb-nav max-w-[430px] mx-auto">
+      <ViewTracker attendeeId={attendee.id} />
       {/* Header */}
       <header className="px-5 pt-safe">
         <div className="h-14 flex items-center gap-3">
@@ -623,14 +627,20 @@ export default async function MePage({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl p-6 text-center" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "#0e1e45" }}>
-              <svg className="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
+          <div className="rounded-2xl p-6" style={{ background: "#0b1838", border: "1px solid #1c2e58" }}>
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-3" style={{ background: "#0e1e45" }}>
+                <svg className="w-7 h-7 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h3 className="text-white font-bold mb-1">조편성 준비중</h3>
+              <p className="text-slate-400 text-sm">조편성이 완료되면 바로 확인할 수 있어요.</p>
             </div>
-            <h3 className="text-white font-bold mb-1">조편성 준비중</h3>
-            <p className="text-slate-400 text-sm">조편성이 완료되면 바로 확인할 수 있어요.</p>
+            <RequestAssignmentButton
+              attendeeId={attendee.id}
+              alreadyRequested={attendee.arrival_notes === "ASSIGNMENT_REQUESTED"}
+            />
           </div>
         )}
 
