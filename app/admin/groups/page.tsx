@@ -330,6 +330,41 @@ export default function GroupsPage() {
 
   const totalAssigned = groups.reduce((s, g) => s + g.members.length, 0);
 
+  function downloadCSV() {
+    const headers = ["조번호", "조이름", "장소", "조장", "이름", "성별", "생년", "나이", "교회", "목", "금", "토"];
+    const rows = [...groups]
+      .sort((a, b) => parseInt(a.group_code) - parseInt(b.group_code))
+      .flatMap((g) => {
+        const venue = getVenue(g.group_code) ?? "";
+        return [...g.members]
+          .sort((a, b) => (b.is_leader ? 1 : 0) - (a.is_leader ? 1 : 0))
+          .map((m) => [
+            g.group_code,
+            g.group_name,
+            venue,
+            m.is_leader ? "O" : "",
+            m.full_name,
+            m.gender === "male" ? "남" : "여",
+            String(m.birth_year),
+            String(2026 - m.birth_year),
+            m.churches?.canonical_name ?? "",
+            m.attends_day1 ? "O" : "",
+            m.attends_day2 ? "O" : "",
+            m.attends_day3 ? "O" : "",
+          ]);
+      });
+
+    const escape = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv = [headers, ...rows].map((r) => r.map(escape).join(",")).join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `조편성_2026.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <main className="min-h-screen bg-navy flex flex-col">
       {/* 조 이동 모달 */}
@@ -408,6 +443,18 @@ export default function GroupsPage() {
             </p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+        <button
+          onClick={downloadCSV}
+          disabled={loading || groups.length === 0}
+          title="CSV 다운로드"
+          className="disabled:opacity-40 disabled:cursor-not-allowed text-slate-300 hover:text-white text-sm font-medium py-2 px-3 rounded-lg transition-colors flex items-center gap-1.5 border border-slate-700 hover:border-slate-500"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          CSV
+        </button>
         <button
           onClick={handleGenerate}
           disabled={generating || loading}
@@ -430,6 +477,7 @@ export default function GroupsPage() {
             </>
           )}
         </button>
+        </div>
       </header>
 
       <div className="flex-1 px-4 py-4 max-w-6xl mx-auto w-full">
