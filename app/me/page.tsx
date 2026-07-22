@@ -4,7 +4,6 @@ import { getChurchColor } from "@/lib/churchColors";
 import { getVenue } from "@/lib/venues";
 import ChurchMap from "@/components/ChurchMap";
 import RequestAssignmentButton from "@/components/RequestAssignmentButton";
-import ViewTracker from "@/components/ViewTracker";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -495,7 +494,6 @@ export default async function MePage({
 
   return (
     <main className="min-h-screen bg-navy flex flex-col pb-nav max-w-[430px] mx-auto">
-      <ViewTracker attendeeId={attendee.id} />
       {/* Header */}
       <header className="px-5 pt-safe">
         <div className="h-14 flex items-center gap-3">

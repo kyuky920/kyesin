@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import PageTracker from "@/components/PageTracker";
 
 export const metadata: Metadata = {
   title: "WALK WITH HIM | 2026 계신 청년 하계수련회",
@@ -28,6 +29,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-screen bg-navy text-white antialiased" style={{ background: "#08122d" }}>
+        <PageTracker />
         {children}
         <BottomNav />
       </body>
