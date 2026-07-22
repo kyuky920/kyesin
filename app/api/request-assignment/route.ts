@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const ASSIGNMENT_REQUEST_MARKER = "ASSIGNMENT_REQUESTED";
-
 export async function POST(req: NextRequest) {
   try {
     const { attendee_id } = await req.json() as { attendee_id: string };
@@ -11,7 +9,7 @@ export async function POST(req: NextRequest) {
     const supabase = createAdminClient();
     const { error } = await supabase
       .from("attendees")
-      .update({ arrival_notes: ASSIGNMENT_REQUEST_MARKER })
+      .update({ arrival_notes: "ASSIGNMENT_REQUESTED" })
       .eq("id", attendee_id);
     if (error) throw error;
     return NextResponse.json({ success: true });
